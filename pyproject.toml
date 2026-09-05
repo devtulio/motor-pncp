@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "motor-pncp"
+version = "0.1.0"
+description = "Motor de coleta do PNCP: HTTP resiliente contra o portal, sem opinião sobre persistência."
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "W"]
+
+[tool.bandit]
+skips = [
+    # B310: urlopen só chama endpoint fixo do PNCP/BCB (https, URL não
+    # vem de entrada do usuário) — _http.py, motor.py.
+    "B310",
+    # B311: random.uniform é jitter de backoff em retry de rede, não uso
+    # criptográfico — _http.py.
+    "B311",
+    # B110: aviso de progresso é cortesia — não pode derrubar o retry se
+    # o callback de quem chama quebrar — _http.py.
+    "B110",
+]
