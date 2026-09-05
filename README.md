@@ -6,25 +6,35 @@ sobre travamentos reais) para ser usado por qualquer sistema, sem cópia.
 
 **Fronteira:** o motor faz HTTP resiliente contra o portal (retry com
 backoff, paralelismo e nº de tentativas que recuam sozinhos sob storm,
-disjuntor por tempo sem sucesso) e devolve dados crus. Não conhece banco
-de dados, schema ou upsert — isso é decisão de quem consome. Essa
-fronteira já existia de fato entre os 3 sistemas que originaram este
-código (um grava SQLite direto, outro tem storage próprio); o motor só
-torna explícito o que já era verdade.
+disjuntor por tempo sem sucesso) e devolve **registros tipados** que
+embrulham o JSON cru do PNCP (`.raw` continua sendo a fonte da verdade —
+ver `tipos.py`). Não conhece banco de dados, schema ou upsert — isso é
+decisão de quem consome. Essa fronteira já existia de fato entre os 3
+sistemas que originaram este código (um grava SQLite direto, outro tem
+storage próprio); o motor só torna explícito o que já era verdade.
+
+Cobertura atual: contratações (`contratacoes`), itens e resultados
+homologados (`itens_e_resultados`), contratos/atas/PCA de um órgão
+(`contratos`/`atas`/`pca`), termos aditivos (`termos_aditivos`), consulta
+de órgão (`consultar_orgao`) e IPCA (`ipca`).
 
 ## Uso
 
 ```python
 from datetime import date
-from motor_pncp import Motor, PncpErro
+from motor_pncp import Motor, Config, PncpErro
 
-motor = Motor(progresso=print)  # progresso é opcional
+# limiares de resiliência são configuráveis — o default é o medido
+# contra o PNCP real; um sistema com perfil diferente ajusta aqui
+motor = Motor(progresso=print, config=Config(conexoes_paralelas=6))
 
 # fase 1 — contratações de um município
 total = 0
 try:
     for contratacao in motor.contratacoes(3550308, date(2026, 1, 1), date.today()):
         total += meu_upsert_contratacao(contratacao)  # você decide o schema
+        # contratacao.numero_controle, .orgao_cnpj, .valor_estimado, ...
+        # contratacao.raw tem o JSON completo do PNCP
 except PncpErro as e:
     registrar_falha("contratacoes", e)  # o que já veio antes já foi processado
 
@@ -35,8 +45,22 @@ def esta_pendente(contratacao, item):
 for contratacao, pares in motor.itens_e_resultados(minhas_pendentes,
                                                     pendente=esta_pendente,
                                                     on_erro=registrar_falha_item):
-    for item, resultado in pares:
+    for item, resultado in pares:  # resultado é None se o item não tem
         meu_upsert_item(contratacao, item, resultado)
+
+# fase 2 (órgão) — contratos, atas, PCA
+for contrato in motor.contratos(cnpj, inicio, date.today()):
+    meu_upsert_contrato(contrato)
+for ata in motor.atas(cnpj, inicio, date.today()):
+    meu_upsert_ata(ata)
+for plano in motor.pca(cnpj, inicio, date.today()):
+    for item_pca in plano.itens:  # achatar em linhas é decisão sua
+        meu_upsert_pca(plano, item_pca)
+
+# termos aditivos — fase opcional sobre contratos já sincronizados
+for contrato, termos in motor.termos_aditivos(meus_contratos_pendentes):
+    for termo in termos:
+        meu_upsert_termo(contrato, termo)
 ```
 
 Instalação em cada sistema consumidor, em modo editável durante o

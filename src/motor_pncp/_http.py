@@ -3,7 +3,7 @@
 Só stdlib de propósito: os sistemas que consomem este motor são builds
 PyInstaller onefile, e o gargalo real (timeout de socket, que não cobre
 DNS) é o mesmo em urllib/requests/httpx — trocar não resolve nada e soma
-uma dependência nova ao empacotamento. Ver docs/licoes.md.
+uma dependência nova ao empacotamento. Ver README.md.
 """
 import concurrent.futures
 import http.client
@@ -15,19 +15,10 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from .configuracao import Config
 from .excecoes import ItensIndisponiveis, PncpErro, SyncCancelado
 
 USER_AGENT_PADRAO = "motor-pncp/0.1 (coleta de contratacoes; open-source)"
-
-_INTERVALO_MIN = 0.5  # s entre requisições — o PNCP tem throttling agressivo
-
-# O PNCP não costuma recusar: ele demora. Insistir com o mesmo prazo curto
-# só repete a falha; por isso cada tentativa espera mais que a anterior.
-TIMEOUTS = (30, 45, 60, 75, 90)
-
-
-def _timeout(tentativa):
-    return TIMEOUTS[min(tentativa, len(TIMEOUTS) - 1)]
 
 
 def _espera(tentativa):
@@ -43,17 +34,22 @@ class Cliente:
     """Uma conexão lógica com o PNCP — pacing e retry por instância, não
     de módulo, para não vazar estado entre coletas."""
 
-    def __init__(self, adaptativo, *, user_agent=USER_AGENT_PADRAO,
-                 progresso=None):
+    def __init__(self, adaptativo, *, config: Config = Config(),
+                 user_agent=USER_AGENT_PADRAO, progresso=None):
         self._adaptativo = adaptativo
+        self._config = config
         self._user_agent = user_agent
         self._progresso = progresso
         self._ultima_req = 0.0
         self._trava_pacing = threading.Lock()
 
+    def _timeout(self, tentativa):
+        timeouts = self._config.timeouts
+        return timeouts[min(tentativa, len(timeouts) - 1)]
+
     def avisar_progresso(self, msg):
         """Beacon: chamado a cada tentativa de retry (não só no fim de uma
-        fase) — sem isso, os até ~5,3min de retry de uma única requisição
+        fase) — sem isso, os até ~5min de retry de uma única requisição
         ficam mudos, indistinguíveis de travamento de verdade."""
         if not self._progresso:
             return
@@ -68,14 +64,16 @@ class Cliente:
             erro_404=False, retry_404=False):
         """GET com pacing e retry/backoff. Dict do JSON, ou None sem dados.
 
-        `retry_404=True` para LISTAGENS (contratações/itens): "sem
-        registros" ali é 204/corpo vazio, nunca 404 — um 404 é falha
-        transitória do portal; sem isso ele vira "janela vazia" e quem
-        persiste avança a marca d'água sobre dados nunca baixados.
+        `retry_404=True` para LISTAGENS (contratações/itens/contratos/
+        atas/PCA): "sem registros" ali é 204/corpo vazio, nunca 404 — um
+        404 é falha transitória do portal; sem isso ele vira "janela
+        vazia" e quem persiste avança a marca d'água sobre dados nunca
+        baixados.
 
         `erro_404=True` faz 404 virar `ItensIndisponiveis` em vez de
-        `None`: usado na listagem de itens de UMA contratação, onde 404
-        também não significa "sem itens" (ver `ItensIndisponiveis`).
+        `None`: usado em listagens de UM registro específico (itens de
+        uma contratação, termos de um contrato), onde 404 também não
+        significa "sem registro" (ver `ItensIndisponiveis`).
         """
         if tentativas is None:
             tentativas = self._adaptativo.tentativas_atual()
@@ -83,7 +81,8 @@ class Cliente:
         for tentativa in range(tentativas):
             if pacing:
                 with self._trava_pacing:
-                    espera = _INTERVALO_MIN - (time.monotonic() - self._ultima_req)
+                    espera = (self._config.intervalo_min
+                             - (time.monotonic() - self._ultima_req))
                     if espera > 0:
                         time.sleep(espera)
                     self._ultima_req = time.monotonic()
@@ -91,7 +90,7 @@ class Cliente:
                 req = urllib.request.Request(
                     url, headers={"User-Agent": self._user_agent,
                                   "Accept": "application/json"})
-                with urllib.request.urlopen(req, timeout=_timeout(tentativa)) as resp:
+                with urllib.request.urlopen(req, timeout=self._timeout(tentativa)) as resp:
                     # resposta boa é o contrapeso dos bloqueios: sem contar
                     # as que dão certo, o paralelismo/tentativas adaptativos
                     # não sabem se alguns 429 numa janela são o portal
@@ -138,7 +137,7 @@ class Cliente:
                     self.avisar_progresso(
                         f"PNCP respondeu HTTP {e.code} — tentativa "
                         f"{tentativa + 2}/{tentativas} (timeout "
-                        f"{_timeout(tentativa + 1)}s)…")
+                        f"{self._timeout(tentativa + 1)}s)…")
                     time.sleep(_espera(tentativa))
                     continue
                 raise PncpErro(f"HTTP {e.code} em {caminho}") from e
@@ -169,15 +168,15 @@ class Cliente:
                     self.avisar_progresso(
                         f"PNCP lento ou fora do ar — tentativa "
                         f"{tentativa + 2}/{tentativas} (timeout "
-                        f"{_timeout(tentativa + 1)}s)…")
+                        f"{self._timeout(tentativa + 1)}s)…")
                     time.sleep(_espera(tentativa))
                     continue
                 # "sem conexão" faz o usuário procurar defeito na internet
                 # dele; o que costuma acontecer de fato é o portal demorar
                 if "timed out" in str(e).lower() or isinstance(e, TimeoutError):
                     raise PncpErro(
-                        f"o PNCP não respondeu em {_timeout(tentativa)}s — "
-                        "o portal está lento ou fora do ar") from e
+                        f"o PNCP não respondeu em {self._timeout(tentativa)}s "
+                        "— o portal está lento ou fora do ar") from e
                 raise PncpErro(f"sem conexão com o PNCP ({e})") from e
 
     def paginar(self, url_base, caminho, params, tamanho_pagina, pacing=True):

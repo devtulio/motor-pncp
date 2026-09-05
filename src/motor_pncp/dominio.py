@@ -2,6 +2,7 @@
 from datetime import date, timedelta
 
 DATA_INICIO_PNCP = date(2021, 1, 1)  # portal entrou no ar em ago/2021
+DATA_INICIO_PCA = date(2021, 4, 1)  # /v1/pca/atualizacao rejeita datas anteriores
 JANELA_MAX_DIAS = 364  # a API de consulta limita o range de datas por chamada
 
 # Modalidades da Lei 14.133/2021 — /v1/contratacoes/* exige

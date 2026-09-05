@@ -1,13 +1,14 @@
 """Motor de coleta do PNCP — API pública do pacote.
 
 Fronteira deliberada: o motor faz HTTP + resiliência contra o portal e
-devolve dados crus (dicts do jeito que o PNCP manda, ou perto disso).
-Quem persiste decide schema, upsert e o que já tem gravado — o motor não
-conhece banco nenhum. Essa fronteira já existia de fato entre os sistemas
-que o originaram (um grava SQLite direto, outro tem storage próprio); o
-motor só torna explícito o que já era verdade.
+devolve registros tipados que embrulham o JSON cru do PNCP (`.raw`
+continua sendo a fonte da verdade — ver `tipos.py`). Quem persiste decide
+schema, upsert e o que já tem gravado; o motor não conhece banco nenhum.
+Essa fronteira já existia de fato entre os sistemas que o originaram (um
+grava SQLite direto, outro tem storage próprio); o motor só torna
+explícito o que já era verdade.
 
-Ver docs/licoes.md para o porquê de cada limiar de resiliência.
+Ver README.md para o porquê de cada limiar de resiliência (em `Config`).
 """
 import concurrent.futures
 import http.client
@@ -18,20 +19,31 @@ from datetime import date
 
 from ._http import USER_AGENT_PADRAO, Cliente
 from ._resiliencia import Adaptativo, Disjuntor
-from .dominio import DATA_INICIO_PNCP, JANELA_MAX_DIAS, MODALIDADES, amd, janelas
+from .configuracao import Config
+from .dominio import (
+    DATA_INICIO_PCA,
+    DATA_INICIO_PNCP,
+    JANELA_MAX_DIAS,
+    MODALIDADES,
+    amd,
+    janelas,
+)
 from .excecoes import ItensIndisponiveis, PncpErro, SyncCancelado
+from .tipos import Ata, Contratacao, Contrato, Item, Orgao, PlanoPca, Resultado, TermoAditivo
 
 BASE = "https://pncp.gov.br/api/consulta"
-# Itens e resultados por item ficam na API interna do portal, não na de
-# consulta; devolvem array puro (sem envelope data/totalPaginas).
+# Itens, resultados, termos aditivos e órgãos ficam na API interna do
+# portal, não na de consulta; alguns endpoints devolvem array puro (sem
+# envelope data/totalPaginas).
 BASE_PNCP = "https://pncp.gov.br/api/pncp"
 
 _URL_IPCA = ("https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados"
             "?formato=json&dataInicial={inicio}")
 
 __all__ = [
-    "Motor", "PncpErro", "SyncCancelado", "ItensIndisponiveis",
-    "MODALIDADES", "DATA_INICIO_PNCP", "JANELA_MAX_DIAS", "janelas", "amd",
+    "Motor", "Config", "PncpErro", "SyncCancelado", "ItensIndisponiveis",
+    "MODALIDADES", "DATA_INICIO_PNCP", "DATA_INICIO_PCA", "JANELA_MAX_DIAS",
+    "janelas", "amd",
 ]
 
 
@@ -43,6 +55,10 @@ class Motor:
     — duas coletas no mesmo processo não se atrapalham, e o beacon nunca
     aponta para o `progresso` de uma coleta que já terminou.
 
+    `config`, se passado, troca os limiares de resiliência (paralelismo,
+    nº de tentativas, quando o disjuntor desiste) pelos do seu sistema —
+    ver `Config`. O default é o medido contra o PNCP real.
+
     `progresso`, se passado, é chamado com uma string a cada ponto natural
     da coleta — inclusive durante retry, o "beacon" que evita minutos de
     silêncio indistinguíveis de travamento. Levantar `SyncCancelado` de
@@ -50,19 +66,60 @@ class Motor:
     meio de uma requisição em voo).
     """
 
-    def __init__(self, *, user_agent=USER_AGENT_PADRAO, progresso=None,
-                 base=BASE, base_pncp=BASE_PNCP):
-        self._adaptativo = Adaptativo()
-        self._cliente = Cliente(self._adaptativo, user_agent=user_agent,
-                                progresso=progresso)
+    def __init__(self, *, config: Config = Config(), user_agent=USER_AGENT_PADRAO,
+                 progresso=None, base=BASE, base_pncp=BASE_PNCP):
+        self._config = config
+        self._adaptativo = Adaptativo(config)
+        self._cliente = Cliente(self._adaptativo, config=config,
+                                user_agent=user_agent, progresso=progresso)
         self._base = base
         self._base_pncp = base_pncp
+
+    # ── infraestrutura comum das fases por janela de data ───────────────
+
+    def _janela_generica(self, caminho, params_extra, inicio, fim, *, rotulo_fase,
+                         chaves_data=("dataInicial", "dataFinal"),
+                         tamanho_pagina=500):
+        """Baixa uma fase que consulta por CNPJ + janela de datas, sem o
+        loop de modalidade de `contratacoes` (contratos, atas, PCA).
+
+        Mesma semântica de disjuntor/falha de `contratacoes`: gera os
+        registros crus conforme chegam, e levanta `PncpErro` no final (ou
+        cedo, se o disjuntor desistir) se alguma janela falhou.
+        """
+        ini_chave, fim_chave = chaves_data
+        consultas = [(amd(a), {**params_extra, ini_chave: amd(a), fim_chave: amd(b)})
+                    for a, b in janelas(inicio, fim)]
+        disjuntor = Disjuntor(self._config)
+        falhas = []
+        gerador = self._cliente.baixar(self._base, caminho, consultas, tamanho_pagina)
+        try:
+            for feitas, (rotulo, lote, erro) in enumerate(gerador, 1):
+                self._cliente.avisar_progresso(
+                    f"{rotulo_fase} — janela {rotulo} ({feitas}/{len(consultas)})…")
+                if erro:
+                    falhas.append(str(erro))
+                    if disjuntor.falha():
+                        raise PncpErro(
+                            f"{rotulo_fase}: parado após {disjuntor.seguidas} "
+                            f"falhas seguidas e {disjuntor.mudo_ha}min sem "
+                            f"nenhuma resposta boa — "
+                            f"{len(consultas) - feitas} janelas não "
+                            f"tentadas — {falhas[0]}")
+                    continue
+                disjuntor.sucesso()
+                yield from lote
+        finally:
+            gerador.close()
+        if falhas:
+            raise PncpErro(f"{rotulo_fase}: {len(falhas)} de {len(consultas)} "
+                           f"janelas falharam — {falhas[0]}")
 
     # ── contratações ─────────────────────────────────────────────────────
 
     def contratacoes(self, codigo_ibge, inicio, fim):
-        """Gera contratações atualizadas de um município, por modalidade e
-        janela de datas — dicts crus do jeito que o PNCP manda.
+        """Gera `Contratacao` atualizadas de um município, por modalidade e
+        janela de datas.
 
         São 13 modalidades × janelas de até 364 dias, todas independentes
         (a API exige o loop por modalidade mesmo quando a maioria não
@@ -81,7 +138,7 @@ class Motor:
                              "codigoMunicipioIbge": codigo_ibge})
                     for codigo, nome in MODALIDADES.items()
                     for a, b in janelas(inicio, fim)]
-        disjuntor = Disjuntor()
+        disjuntor = Disjuntor(self._config)
         falhas = []
         gerador = self._cliente.baixar(self._base, "/v1/contratacoes/atualizacao",
                                        consultas, 50)
@@ -100,7 +157,8 @@ class Motor:
                             f"tentadas — {falhas[0]}")
                     continue
                 disjuntor.sucesso()
-                yield from lote
+                for raw in lote:
+                    yield Contratacao(raw)
         finally:
             gerador.close()
         if falhas:
@@ -143,17 +201,52 @@ class Motor:
                 total = sum(ex.map(uma, consultas))
         return {"total": total, "parcial": falhas > 0}
 
+    # ── contratos, atas, PCA (fase 2 — por CNPJ de órgão) ───────────────
+
+    def contratos(self, cnpj, inicio, fim):
+        """Gera `Contrato` de um órgão atualizados na janela — a API não
+        filtra por município, só por CNPJ."""
+        for raw in self._janela_generica("/v1/contratos/atualizacao",
+                                         {"cnpjOrgao": cnpj}, inicio, fim,
+                                         rotulo_fase="Contratos"):
+            yield Contrato(raw)
+
+    def atas(self, cnpj, inicio, fim):
+        """Gera `Ata` de registro de preços de um órgão atualizadas na
+        janela."""
+        for raw in self._janela_generica("/v1/atas/atualizacao",
+                                         {"cnpj": cnpj}, inicio, fim,
+                                         rotulo_fase="Atas"):
+            yield Ata(raw)
+
+    def pca(self, cnpj, inicio, fim):
+        """Gera `PlanoPca` (Plano de Contratações Anual) de um órgão
+        atualizados na janela.
+
+        Este endpoint usa `dataInicio`/`dataFim` — os demais usam
+        `dataInicial`/`dataFinal` (verificado contra a API real,
+        2026-07-29) — e rejeita datas anteriores a `DATA_INICIO_PCA`.
+        """
+        inicio = max(inicio, DATA_INICIO_PCA)
+        if inicio > fim:
+            return
+        for raw in self._janela_generica("/v1/pca/atualizacao", {"cnpj": cnpj},
+                                         inicio, fim, rotulo_fase="PCA",
+                                         chaves_data=("dataInicio", "dataFim")):
+            yield PlanoPca(raw)
+
     # ── órgãos ───────────────────────────────────────────────────────────
 
     def consultar_orgao(self, cnpj):
-        """Registro do CNPJ no PNCP (razão social, esfera) — `None` se o
+        """`Orgao` do CNPJ no PNCP (razão social, esfera) — `None` se o
         CNPJ não existe no portal."""
-        return self._cliente.get(self._base_pncp, f"/v1/orgaos/{cnpj}", {})
+        raw = self._cliente.get(self._base_pncp, f"/v1/orgaos/{cnpj}", {})
+        return Orgao(raw) if raw else None
 
     # ── itens e resultados ───────────────────────────────────────────────
 
     def itens_da_compra(self, cnpj, ano, sequencial):
-        """Itens de uma contratação (array puro, paginado).
+        """Gera `Item` de uma contratação (array puro, paginado).
 
         Levanta `ItensIndisponiveis` em 404 — não confundir com "esta
         contratação não tem item nenhum" (ver a exceção).
@@ -166,13 +259,14 @@ class Motor:
                 {"pagina": pagina, "tamanhoPagina": 100}, erro_404=True)
             if not lote:
                 return
-            yield from lote
+            for raw in lote:
+                yield Item(raw)
             if len(lote) < 100:
                 return
             pagina += 1
 
     def resultado_do_item(self, cnpj, ano, sequencial, numero_item, pacing=True):
-        """Resultado homologado de um item: vencedor e valor unitário
+        """`Resultado` homologado de um item: vencedor e valor unitário
         fechado, ou `None` se o item ainda não tem resultado."""
         lote = self._cliente.get(
             self._base_pncp,
@@ -182,7 +276,7 @@ class Motor:
             return None
         # o mais recente não cancelado é o que vale
         validos = [r for r in lote if not r.get("dataCancelamento")]
-        return (validos or lote)[0]
+        return Resultado((validos or lote)[0])
 
     def itens_e_resultados(self, contratacoes, *, pendente=None, on_erro=None):
         """Para cada contratação, busca itens e resultados homologados.
@@ -192,12 +286,12 @@ class Motor:
         `pendente`/o registro gerado, útil pra você casar de volta com a
         sua própria linha.
 
-        `pendente(contratacao, item) -> bool`, opcional (default: todos os
-        itens): decide se um item precisa de resultado buscado de novo.
-        Sem isso, todo item com `temResultado` busca resultado sempre —
-        caro numa contratação já conhecida onde só a `dataAtualizacao`
-        cosmética mudou. Você decide com base no que já tem gravado; o
-        motor não sabe.
+        `pendente(contratacao, item: Item) -> bool`, opcional (default:
+        todos os itens): decide se um item precisa de resultado buscado
+        de novo. Sem isso, todo item com `temResultado` busca resultado
+        sempre — caro numa contratação já conhecida onde só a
+        `dataAtualizacao` cosmética mudou. Você decide com base no que já
+        tem gravado; o motor não sabe.
 
         `on_erro(contratacao, excecao)`, opcional: chamado a cada
         contratação que falhar. O motor continua as demais e só desiste
@@ -205,14 +299,14 @@ class Motor:
         falhas seguidas E tempo sem nenhum sucesso) — uma contratação
         quebrada não pode travar a fila inteira.
 
-        Gera `(contratacao, [(item, resultado_ou_none), ...])` — uma
+        Gera `(contratacao, [(Item, Resultado | None), ...])` — uma
         tupla por contratação, só depois que TODOS os itens dela (e
         resultados, buscados em paralelo) chegaram. Contratação com 404
         na listagem de itens não aparece nesta chamada — fica pendente
         para a próxima; as demais continuam normalmente.
         """
         pendente = pendente or (lambda contratacao, item: True)
-        disjuntor = Disjuntor()
+        disjuntor = Disjuntor(self._config)
         pendentes = list(contratacoes)
         for i, c in enumerate(pendentes, 1):
             self._cliente.avisar_progresso(
@@ -221,8 +315,7 @@ class Motor:
                 todos = list(self.itens_da_compra(c["orgao_cnpj"], c["ano"],
                                                    c["sequencial"]))
                 itens = [item for item in todos if pendente(c, item)]
-                com_resultado = [item for item in itens
-                                 if item.get("temResultado")]
+                com_resultado = [item for item in itens if item.tem_resultado]
                 resultados = {}
                 if com_resultado:
                     # os resultados são independentes entre si: buscar em
@@ -235,15 +328,15 @@ class Motor:
                         futuros = {
                             ex.submit(self.resultado_do_item, c["orgao_cnpj"],
                                      c["ano"], c["sequencial"],
-                                     item["numeroItem"], not paralelo):
-                                item["numeroItem"]
+                                     item.numero_item, not paralelo):
+                                item.numero_item
                             for item in com_resultado}
                         for f in concurrent.futures.as_completed(futuros):
                             resultados[futuros[f]] = f.result()
                     finally:
                         ex.shutdown(wait=True, cancel_futures=True)
                 disjuntor.sucesso()
-                yield c, [(item, resultados.get(item.get("numeroItem")))
+                yield c, [(item, resultados.get(item.numero_item))
                          for item in itens]
             except ItensIndisponiveis as e:
                 if on_erro:
@@ -264,6 +357,71 @@ class Motor:
                         f"e {disjuntor.mudo_ha}min sem nenhuma contratação "
                         f"concluída, em {i} de {len(pendentes)} "
                         f"contratações — {e}") from e
+
+    # ── termos aditivos (fase opcional — contratos já sincronizados) ────
+
+    def _quantidade_termos(self, cnpj, ano, sequencial):
+        """Chamada barata antes da cara: pula contrato sem aditivo
+        nenhum, sem pagar o custo de listar termos que não existem."""
+        r = self._cliente.get(
+            self._base_pncp,
+            f"/v1/orgaos/{cnpj}/contratos/{ano}/{sequencial}/termos/quantidade",
+            {}, erro_404=True)
+        if isinstance(r, dict):
+            return r.get("quantidade", 0)
+        return r or 0
+
+    def _termos_do_contrato(self, cnpj, ano, sequencial):
+        return self._cliente.get(
+            self._base_pncp,
+            f"/v1/orgaos/{cnpj}/contratos/{ano}/{sequencial}/termos",
+            {}, erro_404=True) or []
+
+    def termos_aditivos(self, contratos, *, on_erro=None):
+        """Para cada contrato, busca os termos aditivos (se houver).
+
+        `contratos`: iterável de dicts com pelo menos `orgao_cnpj`, `ano`,
+        `sequencial`. `on_erro`, mesmo contrato do `itens_e_resultados`.
+
+        Gera `(contrato, [TermoAditivo, ...])` — lista vazia quando o
+        contrato não tem aditivo (ainda assim é gerado, pra você saber
+        que já foi verificado e não precisa checar de novo). Termo
+        aditivo é evento raro e definitivo por contrato — ao contrário de
+        itens, não há necessidade de revisitar o que já foi verificado.
+        """
+        disjuntor = Disjuntor(self._config)
+        pendentes = list(contratos)
+        for i, c in enumerate(pendentes, 1):
+            self._cliente.avisar_progresso(
+                f"Termos aditivos — contrato {i} de {len(pendentes)}…")
+            try:
+                qtd = self._quantidade_termos(c["orgao_cnpj"], c["ano"],
+                                              c["sequencial"])
+                termos = []
+                if qtd:
+                    termos = [TermoAditivo(t) for t in self._termos_do_contrato(
+                        c["orgao_cnpj"], c["ano"], c["sequencial"])]
+                disjuntor.sucesso()
+                yield c, termos
+            except ItensIndisponiveis as e:
+                if on_erro:
+                    on_erro(c, e)
+                if disjuntor.falha():
+                    raise PncpErro(
+                        f"parado após {disjuntor.seguidas} consultas de "
+                        f"termos seguidas sem resposta (404) e "
+                        f"{disjuntor.mudo_ha}min sem nenhum contrato "
+                        f"concluído, em {i} de {len(pendentes)} "
+                        "contratos") from e
+            except PncpErro as e:
+                if on_erro:
+                    on_erro(c, e)
+                if disjuntor.falha():
+                    raise PncpErro(
+                        f"parado após {disjuntor.seguidas} falhas seguidas "
+                        f"e {disjuntor.mudo_ha}min sem nenhum contrato "
+                        f"concluído, em {i} de {len(pendentes)} "
+                        f"contratos — {e}") from e
 
     # ── correção monetária ───────────────────────────────────────────────
 
