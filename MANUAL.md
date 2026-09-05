@@ -1,0 +1,244 @@
+# Manual — motor_pncp
+
+Referência completa da API pública. Para instalação e um exemplo rápido,
+ver [README.md](README.md).
+
+## Índice
+
+- [Motor](#motor)
+- [Config](#config)
+- [Registros tipados](#registros-tipados)
+- [Exceções](#exceções)
+- [Helpers de domínio](#helpers-de-domínio)
+- [Padrões de uso](#padrões-de-uso)
+
+---
+
+## Motor
+
+```python
+Motor(*, config: Config = Config(), user_agent: str = ..., progresso=None,
+     base: str = BASE, base_pncp: str = BASE_PNCP)
+```
+
+Uma instância = uma coleta. Crie uma nova por sincronização — todo o
+estado adaptativo (bloqueios/sucessos recentes, pacing, dedup de avisos)
+é por instância, não de módulo.
+
+| Parâmetro | Descrição |
+|---|---|
+| `config` | Limiares de resiliência. Ver [Config](#config). |
+| `user_agent` | Enviado em toda requisição. Identifique seu sistema — o PNCP não exige, mas ajuda a instituição a saber quem está batendo na API dela. |
+| `progresso` | `callable(str)` opcional, chamado a cada ponto natural da coleta (contratação processada, retry em andamento). Levantar `SyncCancelado` de dentro dele interrompe a coleta no próximo ponto de checagem — não no meio de uma requisição em voo. |
+| `base` / `base_pncp` | URLs base — normalmente não precisam mudar; existem pra testes/mocks. |
+
+### `contratacoes(codigo_ibge, inicio, fim) -> Iterator[Contratacao]`
+
+Contratações atualizadas de um município, por modalidade (13) e janela de
+até 364 dias. Baixadas em paralelo conforme a saúde do portal.
+
+Levanta `PncpErro` se alguma consulta falhar — **o que já foi gerado
+antes disso quem consome já processou**; não avance sua marca d'água de
+sincronização se isso acontecer (falha ≠ ausência). Se o disjuntor
+decidir que a fase morreu, as consultas restantes nem são tentadas.
+
+### `contar_contratacoes(codigo_ibge, inicio=DATA_INICIO_PNCP, fim=None) -> dict`
+
+Quantas contratações um município tem, sem baixar nenhuma — lê
+`totalRegistros` do envelope de cada consulta. Devolve
+`{"total": int, "parcial": bool}`; `parcial=True` quando alguma consulta
+falhou (o total é subestimado, nunca superestimado).
+
+### `contratos(cnpj, inicio, fim) -> Iterator[Contrato]`
+
+Contratos de um órgão atualizados na janela — a API filtra por CNPJ, não
+por município.
+
+### `atas(cnpj, inicio, fim) -> Iterator[Ata]`
+
+Atas de registro de preços de um órgão atualizadas na janela.
+
+### `pca(cnpj, inicio, fim) -> Iterator[PlanoPca]`
+
+Planos de Contratação Anual de um órgão atualizados na janela. Usa
+`dataInicio`/`dataFim` (os outros endpoints usam `dataInicial`/
+`dataFinal`) e ajusta `inicio` para `DATA_INICIO_PCA` se vier anterior —
+o endpoint rejeita datas mais antigas.
+
+### `consultar_orgao(cnpj) -> Orgao | None`
+
+Registro do CNPJ no PNCP — `None` se o CNPJ não existe no portal.
+
+### `itens_da_compra(cnpj, ano, sequencial) -> Iterator[Item]`
+
+Itens de uma contratação. Levanta `ItensIndisponiveis` em 404 — não é o
+mesmo que "sem itens" (ver [Exceções](#exceções)).
+
+### `resultado_do_item(cnpj, ano, sequencial, numero_item, pacing=True) -> Resultado | None`
+
+Resultado homologado de um item — `None` se ainda não tem.
+
+### `itens_e_resultados(contratacoes, *, pendente=None, on_erro=None) -> Iterator[tuple[dict, list[tuple[Item, Resultado | None]]]]`
+
+Para cada contratação, busca itens e (em paralelo) os resultados dos que
+têm. Ver [Padrões de uso](#padrões-de-uso) para `pendente`/`on_erro`.
+
+`contratacoes`: iterável de **dicts seus**, com pelo menos `orgao_cnpj`,
+`ano`, `sequencial` — o motor não impõe tipo aqui porque é você quem sabe
+quais contratações precisam de revisita.
+
+Gera `(contratacao, [(Item, Resultado | None), ...])` — uma tupla por
+contratação, só depois que todos os itens dela chegaram. Contratação com
+404 na listagem não aparece nesta chamada (fica pendente); as demais
+continuam.
+
+### `termos_aditivos(contratos, *, on_erro=None) -> Iterator[tuple[dict, list[TermoAditivo]]]`
+
+Para cada contrato, verifica (chamada barata) se há termo aditivo antes
+de buscá-los (chamada cara). `contratos`: mesmo formato de dict que
+`itens_e_resultados`. Gera `(contrato, [TermoAditivo, ...])` — lista
+vazia quando não há aditivo (ainda assim gerado, pra você saber que já
+foi verificado).
+
+### `ipca(inicio=None) -> Iterator[dict]`
+
+Variação mensal do IPCA (Banco Central, série SGS 433) desde `inicio`
+(`dd/mm/aaaa`). Gera `{"competencia": "aaaa-mm", "variacao": float}`.
+
+---
+
+## Config
+
+Dataclass congelado — todos os limiares de resiliência, com os valores
+medidos contra o PNCP real como default.
+
+| Campo | Default | O que é |
+|---|---|---|
+| `conexoes_paralelas` | `4` | Requisições simultâneas com o portal saudável. |
+| `janela_eventos` | `120` (s) | Só bloqueios/sucessos dentro desta janela contam pra decidir paralelismo/tentativas. |
+| `taxa_recuo` | `0.2` | Fração de bloqueios recentes acima da qual já vale recuar. |
+| `taxa_tregua` | `0.5` | Fração acima da qual o portal está recusando mais do que respondendo. |
+| `tentativas_padrao` | `5` | Tentativas por requisição em condição normal. |
+| `tentativas_curtas` | `2` | Tentativas quando um storm já está confirmado. |
+| `timeouts` | `(30,45,60,75,90)` | Timeout de cada tentativa sucessiva. |
+| `intervalo_min` | `0.5` (s) | Pacing mínimo entre requisições sequenciais. |
+| `falhas_consecutivas_limite` | `5` | Falhas seguidas a partir das quais o disjuntor passa a olhar o tempo sem sucesso. |
+| `sem_sucesso_limite` | `600` (s) | Combinado com o limite acima, quando o disjuntor desiste da fase. |
+| `janela_operacional` | `300` (s) | Avisos de retry da mesma causa ficam agrupados dentro desta janela. |
+
+```python
+from motor_pncp import Motor, Config
+
+# sistema com perfil mais impaciente (ex.: atende cliente esperando na tela)
+motor = Motor(config=Config(sem_sucesso_limite=180, tentativas_padrao=3))
+```
+
+---
+
+## Registros tipados
+
+Cada um embrulha o JSON cru do PNCP em `.raw` — **fonte da verdade**. As
+`@property` são conveniência para os campos mais usados; a API do PNCP
+pode ganhar campo novo sem quebrar nada aqui. Precisa de um campo sem
+`@property`? Pegue de `.raw` diretamente.
+
+| Tipo | Campos de conveniência |
+|---|---|
+| `Contratacao` | `numero_controle`, `ano`, `sequencial`, `orgao_cnpj`, `orgao_nome`, `unidade_nome`, `modalidade_id`, `situacao`, `objeto`, `valor_estimado`, `valor_homologado`, `data_atualizacao`, `data_publicacao` |
+| `Item` | `numero_item`, `descricao`, `tem_resultado`, `quantidade`, `valor_unitario_estimado`, `valor_total_estimado`, `data_atualizacao` |
+| `Resultado` | `cancelado`, `fornecedor_ni`, `fornecedor_nome`, `valor_unitario_homologado`, `valor_total_homologado`, `quantidade_homologada`, `data_resultado` |
+| `Contrato` | `numero_controle`, `ano`, `sequencial`, `orgao_cnpj`, `valor_global`, `data_atualizacao` |
+| `Ata` | `numero_controle`, `orgao_cnpj`, `vigencia_fim`, `data_atualizacao` |
+| `PlanoPca` | `id_pca`, `ano`, `orgao_cnpj`, `itens` (lista crua — achatar em linhas é decisão sua), `data_atualizacao` |
+| `TermoAditivo` | `sequencial`, `tipo`, `valor_global`, `valor_acrescido`, `data_assinatura` |
+| `Orgao` | `cnpj`, `razao_social`, `esfera` (`M`/`E`/`F`/`N`) |
+
+Valores numéricos de conveniência já passam por `num()` (string
+malformada vira `None`, não quebra silenciosamente numa coluna REAL).
+Datas ficam como **string crua** do PNCP — use `dt()` se seu schema
+precisa de um `datetime` de verdade (ver abaixo).
+
+---
+
+## Exceções
+
+| Exceção | Quando |
+|---|---|
+| `PncpErro` | Falha de comunicação após esgotar as tentativas, ou fase abortada pelo disjuntor. Base de todas as outras. |
+| `SyncCancelado` | Você levantou de dentro do `progresso` pra interromper a coleta. **Não herda de `PncpErro`** — se herdasse, um `except PncpErro` engoliria o cancelamento. |
+| `ItensIndisponiveis` | 404 numa listagem de UM registro específico (itens de uma contratação, termos de um contrato). Não é "sem registro" — é o portal ocupado; não marque como concluído. |
+
+---
+
+## Helpers de domínio
+
+```python
+from motor_pncp import janelas, amd, num, primeiro, dt
+```
+
+| Função | Uso |
+|---|---|
+| `janelas(inicio, fim, max_dias=364)` | Fatia um intervalo em janelas — usado internamente, exposto pra quem monta suas próprias consultas por CNPJ. |
+| `amd(data)` | Formata `date` como `AAAAMMDD` (formato exigido pela API). |
+| `num(valor)` | Converte campo numérico da API pra `float`, ou `None` se malformado. |
+| `primeiro(item, *chaves)` | Primeiro valor não-nulo entre variantes de grafia de um campo. |
+| `dt(valor)` | String de data/hora do PNCP → `datetime` ciente de fuso (UTC). String sem fuso explícito vira UTC direto — **nunca** passa por horário local. Só precisa disso quem grava num tipo de data/hora real (Postgres, etc.); quem grava como TEXT não precisa. |
+
+---
+
+## Padrões de uso
+
+### Fronteira: o motor não persiste
+
+Todo método devolve dados — nenhum grava em lugar nenhum. `schema`,
+`upsert`, `config`/`last_sync`, `log` de sincronização: tudo isso é seu.
+
+### `pendente()` — evite refetch caro
+
+`itens_e_resultados` busca resultado de TODO item com `temResultado` a
+menos que você diga o contrário:
+
+```python
+def pendente(contratacao, item: Item) -> bool:
+    """True = precisa buscar de novo."""
+    antigo = meu_banco.item(contratacao["numero_controle"], item.numero_item)
+    if antigo is None or antigo.data_atualizacao != item.data_atualizacao:
+        return True
+    return item.tem_resultado and antigo.valor_unitario_homologado is None
+```
+
+Sem isso, uma contratação já conhecida onde só a `dataAtualizacao`
+cosmética mudou paga uma requisição de resultado por item à toa.
+
+### `on_erro()` — uma contratação quebrada não trava a fila
+
+`itens_e_resultados` e `termos_aditivos` continuam as demais contratações
+quando uma falha — só desistem da fase inteira via disjuntor (falhas
+seguidas **e** tempo sem sucesso, nunca só contagem — fila grande
+tropeça por ruído normal do portal). `on_erro(item, excecao)` é onde você
+registra o que falhou pra tentar de novo na próxima passada.
+
+### Cancelamento cooperativo
+
+```python
+cancelado = threading.Event()
+
+def progresso(msg):
+    print(msg)
+    if cancelado.is_set():
+        raise SyncCancelado()
+
+motor = Motor(progresso=progresso)
+```
+
+A parada acontece no próximo ponto de checagem (início de item/
+contratação, ou entre tentativas de retry) — não no meio de uma
+requisição em voo.
+
+### Disjuntor: falha ≠ ausência
+
+Quando `PncpErro` escapa de `contratacoes`/`contratos`/`atas`/`pca`, **o
+que já foi gerado antes já foi processado por você** — mas a fase não
+terminou. Não avance sua marca d'água de sincronização (`last_sync_*`)
+para essa fase; refaça a mesma janela na próxima passada. Avançar sobre
+uma falha parcial abre um buraco permanente no acervo.

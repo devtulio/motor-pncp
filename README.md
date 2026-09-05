@@ -1,8 +1,14 @@
 # Motor de Coleta
 
+[![CI](https://github.com/devtulio/motor-pncp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/motor-pncp/actions/workflows/ci.yml)
+
 Pacote `motor_pncp` (`src/`) — motor de coleta do PNCP, extraído do
 `pncp.py` do Pretiarium Free (2026-09-05, depois de 3 rodadas de auditoria
 sobre travamentos reais) para ser usado por qualquer sistema, sem cópia.
+Auditado contra as 3 variantes de origem (Licitarium Free, Licitarium
+Pro, Pretiarium Free) — ver [CHANGELOG.md](CHANGELOG.md).
+
+Referência completa da API: [MANUAL.md](MANUAL.md).
 
 **Fronteira:** o motor faz HTTP resiliente contra o portal (retry com
 backoff, paralelismo e nº de tentativas que recuam sozinhos sob storm,
@@ -70,9 +76,11 @@ desenvolvimento:
 pip install -e "../Motor de Coleta"
 ```
 
-Testes: `pip install -e ".[dev]" && pytest` (37 testes, focados na lógica
-de resiliência — disjuntor, paralelismo/tentativas adaptativos,
-classificação de erro HTTP, e o vazamento de thread do achado 8).
+Testes: `pip install -e ".[dev]" && pytest` (64 testes, focados na lógica
+de resiliência — disjuntor, paralelismo/tentativas adaptativos, dedup de
+avisos, classificação de erro HTTP, e o vazamento de thread do achado 8).
+`ruff check src tests` e `bandit -q -c pyproject.toml -r src` rodam no CI
+a cada push/PR (Python 3.10 e 3.12).
 
 ## Lições de coleta e interpretação de dados públicos
 
