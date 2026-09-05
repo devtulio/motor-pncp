@@ -193,6 +193,18 @@ from motor_pncp import janelas, amd, num, primeiro, dt
 Todo método devolve dados — nenhum grava em lugar nenhum. `schema`,
 `upsert`, `config`/`last_sync`, `log` de sincronização: tudo isso é seu.
 
+### Fronteira: o motor não orquestra
+
+De propósito, não existe um `Motor.sincronizar_tudo()`: decidir **qual**
+fase roda, a janela incremental (`last_sync_contratacoes`, etc.), o
+throttle contra rodar de novo cedo demais e o VACUUM do banco dependem
+de estado que só o seu sistema tem (config/log próprios) — e os 3
+sistemas de origem já orquestram de formas incompatíveis entre si (o
+Licitarium Pro roda a fase de itens GLOBAL, multi-tenant, sem o conceito
+de "município de referência" do Free/Pretiarium). Cada sistema mantém o
+próprio `sincronizar_tudo`, chamando os métodos do `Motor` no lugar do
+`pncp.py` antigo.
+
 ### `pendente()` — evite refetch caro
 
 `itens_e_resultados` busca resultado de TODO item com `temResultado` a
