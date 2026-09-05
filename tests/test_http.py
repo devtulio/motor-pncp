@@ -165,6 +165,25 @@ def test_beacon_quebrado_nao_derruba_o_retry(urlopen_fake):
     assert c.get("https://x", "/y", {}, tentativas=3) == {"ok": True}
 
 
+def test_beacon_agrupa_a_mesma_falha_entre_requisicoes_diferentes(urlopen_fake):
+    """O storm real que motivou isso: centenas de contratações DIFERENTES
+    batendo 503 — não é retry de uma só requisição, é a mesma causa se
+    repetindo em chamadas `get()` independentes."""
+    avisos = []
+    c = Cliente(Adaptativo(), progresso=avisos.append)
+    # requisição 1: falha uma vez com 503, depois funciona
+    urlopen_fake.append(erro_http(503))
+    urlopen_fake.append(resposta_json({"ok": 1}))
+    c.get("https://x", "/a", {}, tentativas=3)
+    # requisição 2 (outra contratação, mesma causa): deveria ficar em
+    # silêncio — já avisamos sobre HTTP 503 há poucos segundos
+    urlopen_fake.append(erro_http(503))
+    urlopen_fake.append(resposta_json({"ok": 2}))
+    c.get("https://x", "/b", {}, tentativas=3)
+    assert len(avisos) == 1
+    assert "/a" in avisos[0] and "/b" not in avisos[0]
+
+
 def test_beacon_cancelamento_nao_e_engolido(urlopen_fake):
     from motor_pncp.excecoes import SyncCancelado
 

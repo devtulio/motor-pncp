@@ -115,3 +115,39 @@ class Disjuntor:
     def mudo_ha(self):
         """Minutos desde o último sucesso (ou desde o início da fase)."""
         return round((time.monotonic() - self.desde) / 60)
+
+
+class Dedup:
+    """Agrupa avisos repetidos da MESMA causa por janela.
+
+    Sem isso, um storm de centenas de falhas idênticas em requisições
+    DIFERENTES (não é retry de uma só — é a mesma causa, ex. HTTP 503,
+    aparecendo em milhares de contratações) produz uma linha idêntica por
+    ocorrência no callback de progresso. Portado de um padrão da família
+    de sistemas (`sgx_base.registrar_operacional`) que resolveu o mesmo
+    problema do lado de um log Python.
+
+    Uma instância por `Motor` — não estado de módulo, mesmo motivo do
+    `Adaptativo`/`Disjuntor`.
+    """
+
+    def __init__(self, janela: float = 300):
+        self._janela = janela
+        self._estado = {}  # chave -> (última emissão, ocorrências desde então)
+        self._trava = threading.Lock()
+
+    def registrar(self, chave, mensagem):
+        """Devolve a mensagem a emitir agora (com contagem, se algo ficou
+        represado), ou `None` se esta ocorrência deve ficar em silêncio —
+        dentro da janela de uma emissão recente para a mesma `chave`."""
+        agora = time.monotonic()
+        with self._trava:
+            ultimo, contagem = self._estado.get(chave, (None, 0))
+            contagem += 1
+            if ultimo is not None and agora - ultimo < self._janela:
+                self._estado[chave] = (ultimo, contagem)
+                return None
+            self._estado[chave] = (agora, 0)
+        if contagem > 1:
+            return f"{mensagem} (×{contagem} em {self._janela / 60:.0f}min)"
+        return mensagem

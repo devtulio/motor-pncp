@@ -15,6 +15,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from ._resiliencia import Dedup
 from .configuracao import Config
 from .excecoes import ItensIndisponiveis, PncpErro, SyncCancelado
 
@@ -65,6 +66,7 @@ class Cliente:
                  user_agent=USER_AGENT_PADRAO, progresso=None):
         self._adaptativo = adaptativo
         self._config = config
+        self._dedup = Dedup(config.janela_operacional)
         self._user_agent = user_agent
         self._progresso = progresso
         self._ultima_req = 0.0
@@ -86,6 +88,15 @@ class Cliente:
             raise  # parada a pedido não é cortesia
         except Exception:
             pass  # aviso é cortesia; não pode derrubar o retry por isso
+
+    def _avisar_causa_recorrente(self, chave, mensagem):
+        """Como `avisar_progresso`, mas agrupado por `chave` — ver `Dedup`.
+        Usado só nos avisos de retry por falha (a fonte real do storm de
+        linhas repetidas); progresso de item/contratação não passa por
+        aqui, cada um já é informação nova."""
+        emitir = self._dedup.registrar(chave, mensagem)
+        if emitir:
+            self.avisar_progresso(emitir)
 
     def get(self, url_base, caminho, params, *, tentativas=None, pacing=True,
             erro_404=False, retry_404=False):
@@ -135,9 +146,8 @@ class Cliente:
                 if e.code == 404 and retry_404:
                     if tentativa < tentativas - 1:
                         self._adaptativo.registrar_bloqueio()
-                        self.avisar_progresso(
-                            f"PNCP com HTTP 404 — tentativa {tentativa + 2}"
-                            f"/{tentativas}…")
+                        self._avisar_causa_recorrente(
+                            "http404", f"PNCP com HTTP 404 em {caminho}")
                         time.sleep(_espera(tentativa))
                         continue
                     raise PncpErro(
@@ -148,9 +158,8 @@ class Cliente:
                     return None  # sem registros para o filtro
                 if e.code == 429 and tentativa < tentativas - 1:
                     self._adaptativo.registrar_bloqueio()
-                    self.avisar_progresso(
-                        f"PNCP pedindo pra esperar (429) — tentativa "
-                        f"{tentativa + 2}/{tentativas}…")
+                    self._avisar_causa_recorrente(
+                        "http429", f"PNCP pedindo pra esperar (429) em {caminho}")
                     retry_after = e.headers.get("Retry-After")
                     time.sleep(int(retry_after) if (retry_after or "").isdigit()
                                else 5 * (tentativa + 1))
@@ -161,10 +170,8 @@ class Cliente:
                     # insistir com várias conexões contra quem já está
                     # pedindo trégua
                     self._adaptativo.registrar_bloqueio()
-                    self.avisar_progresso(
-                        f"PNCP respondeu HTTP {e.code} — tentativa "
-                        f"{tentativa + 2}/{tentativas} (timeout "
-                        f"{self._timeout(tentativa + 1)}s)…")
+                    self._avisar_causa_recorrente(
+                        f"http{e.code}", f"PNCP respondeu HTTP {e.code} em {caminho}")
                     time.sleep(_espera(tentativa))
                     continue
                 # o corpo do 4xx do PNCP costuma trazer o motivo de
@@ -179,9 +186,9 @@ class Cliente:
                 # quem chama.
                 if tentativa < tentativas - 1:
                     self._adaptativo.registrar_bloqueio()
-                    self.avisar_progresso(
-                        f"PNCP devolveu resposta ilegível — tentativa "
-                        f"{tentativa + 2}/{tentativas}…")
+                    self._avisar_causa_recorrente(
+                        "corpo_invalido",
+                        f"PNCP devolveu resposta ilegível em {caminho}")
                     time.sleep(_espera(tentativa))
                     continue
                 raise PncpErro(
@@ -195,10 +202,10 @@ class Cliente:
                 # chama.
                 if tentativa < tentativas - 1:
                     self._adaptativo.registrar_bloqueio()
-                    self.avisar_progresso(
-                        f"PNCP lento ou fora do ar — tentativa "
-                        f"{tentativa + 2}/{tentativas} (timeout "
-                        f"{self._timeout(tentativa + 1)}s)…")
+                    self._avisar_causa_recorrente(
+                        f"rede:{type(e).__name__}",
+                        f"PNCP lento ou fora do ar em {caminho} "
+                        f"({type(e).__name__})")
                     time.sleep(_espera(tentativa))
                     continue
                 # "sem conexão" faz o usuário procurar defeito na internet

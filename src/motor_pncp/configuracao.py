@@ -48,3 +48,10 @@ class Config:
     """Segundos sem nenhum sucesso, combinados com
     `falhas_consecutivas_limite`, a partir dos quais o disjuntor desiste
     da fase."""
+
+    janela_operacional: float = 300
+    """Segundos: avisos de retry da MESMA causa (ex.: HTTP 503) em
+    requisições diferentes ficam em silêncio dentro desta janela depois
+    do primeiro, e a próxima emissão resume quantos ficaram represados —
+    sem isso, um storm em uma fila de milhares produz uma linha idêntica
+    por requisição."""

@@ -1,6 +1,6 @@
 import time
 
-from motor_pncp._resiliencia import Adaptativo, Disjuntor
+from motor_pncp._resiliencia import Adaptativo, Dedup, Disjuntor
 from motor_pncp.configuracao import Config
 
 CFG = Config()
@@ -121,3 +121,41 @@ def test_janela_de_eventos_expira(monkeypatch):
 def test_adaptativo_respeita_conexoes_paralelas_customizado():
     a = Adaptativo(Config(conexoes_paralelas=8))
     assert a.paralelismo_atual() == 8
+
+
+# ── Dedup ────────────────────────────────────────────────────────────────
+
+def test_dedup_emite_a_primeira_ocorrencia_sem_sufixo():
+    d = Dedup(janela=300)
+    assert d.registrar("http503", "PNCP 503") == "PNCP 503"
+
+
+def test_dedup_silencia_ocorrencias_dentro_da_janela(monkeypatch):
+    relogio = [0.0]
+    monkeypatch.setattr(time, "monotonic", lambda: relogio[0])
+    d = Dedup(janela=300)
+    assert d.registrar("http503", "PNCP 503") == "PNCP 503"
+    relogio[0] += 100
+    assert d.registrar("http503", "PNCP 503") is None
+    relogio[0] += 100
+    assert d.registrar("http503", "PNCP 503") is None
+
+
+def test_dedup_resume_a_contagem_apos_a_janela(monkeypatch):
+    relogio = [0.0]
+    monkeypatch.setattr(time, "monotonic", lambda: relogio[0])
+    d = Dedup(janela=300)
+    d.registrar("http503", "PNCP 503")
+    relogio[0] += 100
+    d.registrar("http503", "PNCP 503")  # suprimido, 1ª represada
+    relogio[0] += 100
+    d.registrar("http503", "PNCP 503")  # suprimido, 2ª represada
+    relogio[0] += 200  # passa dos 300s desde a última EMISSÃO (t=0)
+    emitido = d.registrar("http503", "PNCP 503")
+    assert emitido == "PNCP 503 (×3 em 5min)"
+
+
+def test_dedup_nao_mistura_chaves_diferentes():
+    d = Dedup(janela=300)
+    assert d.registrar("http503", "A") == "A"
+    assert d.registrar("http429", "B") == "B"  # chave diferente, não suprime
