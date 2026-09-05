@@ -29,7 +29,12 @@ class Orgao:
 
     @property
     def esfera(self):
-        return (self.raw.get("poderId"), self.raw.get("esferaId"))
+        """`M`/`E`/`F`/`N` — municipal/estadual/federal/não informada.
+        Órgão de esfera estadual/federal pode aparecer nas contratações de
+        um município por ter uma unidade lá (um presídio, um campus); é
+        quem consome que decide o que fazer com isso (ex.: não tratar como
+        órgão do próprio município)."""
+        return self.raw.get("esferaId")
 
 
 @dataclass(frozen=True)

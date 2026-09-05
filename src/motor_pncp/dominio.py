@@ -1,5 +1,5 @@
 """Constantes e helpers de domínio do PNCP — não mudam por sistema consumidor."""
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 DATA_INICIO_PNCP = date(2021, 1, 1)  # portal entrou no ar em ago/2021
 DATA_INICIO_PCA = date(2021, 4, 1)  # /v1/pca/atualizacao rejeita datas anteriores
@@ -60,3 +60,22 @@ def num(v):
         return float(v)
     except (TypeError, ValueError):
         return None
+
+
+def dt(valor):
+    """String de data/hora do PNCP convertida pra `datetime` ciente de
+    fuso, em UTC — sem assumir fuso local (América/São_Paulo).
+
+    Uma string sem fuso explícito vira UTC direto, nunca passa por
+    horário local antes. Achado real ao migrar um acervo gravado por raw
+    SQL: o banco já tinha a string do PNCP persistida sem conversão
+    nenhuma (equivalente a "já é UTC"); um parser que assumisse fuso
+    local pra converter introduziria um desvio de horas contra o que já
+    estava gravado. Quem persiste como TEXT (sem precisar de um
+    `datetime` de verdade) não precisa chamar isto — é só pra quem
+    grava num tipo de data/hora real.
+    """
+    if not valor:
+        return None
+    d = datetime.fromisoformat(valor)
+    return d if d.tzinfo else d.replace(tzinfo=timezone.utc)

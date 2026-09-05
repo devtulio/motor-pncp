@@ -20,6 +20,33 @@ from .excecoes import ItensIndisponiveis, PncpErro, SyncCancelado
 
 USER_AGENT_PADRAO = "motor-pncp/0.1 (coleta de contratacoes; open-source)"
 
+# Códigos que o PNCP devolve por sobrecarga, não por defeito no pedido.
+# 422 entrou depois de um incidente real: numa madrugada de 429/500/503/504,
+# o portal também devolveu 422 numa janela que, refeita depois, respondeu
+# 204 normalmente. Um 422 "de verdade" (parâmetro inválido) esgota as
+# tentativas e falha do mesmo jeito — custa uma escada a mais numa consulta
+# que morreria de qualquer forma, contra confundir portal instável com
+# parâmetro errado.
+HTTP_TRANSITORIOS = (422, 500, 502, 503, 504)
+_LIMITE_MOTIVO = 200
+
+
+def _motivo(erro):
+    """Trecho do corpo da resposta de erro, pra mensagem dizer o porquê.
+
+    O corpo de um 4xx do PNCP costuma trazer o motivo de verdade (ex.:
+    "Data inicial inválida ou anterior a 20210401"). Descartá-lo deixa a
+    mensagem só com "HTTP 422 em /caminho" — diagnosticar exige reproduzir
+    a chamada à mão.
+    """
+    try:
+        corpo = " ".join(erro.read().decode("utf-8", "replace").split())
+    except Exception:
+        return ""
+    if not corpo or corpo.lstrip().startswith("<"):
+        return ""  # página HTML de erro do portal não informa nada
+    return f" — {corpo[:_LIMITE_MOTIVO]}"
+
 
 def _espera(tentativa):
     """Backoff com sorteio: 1, 2, 4, 8s + até meio segundo de desvio.
@@ -128,7 +155,7 @@ class Cliente:
                     time.sleep(int(retry_after) if (retry_after or "").isdigit()
                                else 5 * (tentativa + 1))
                     continue
-                if e.code in (500, 502, 503, 504) and tentativa < tentativas - 1:
+                if e.code in HTTP_TRANSITORIOS and tentativa < tentativas - 1:
                     # portal sobrecarregado conta como bloqueio: o
                     # paralelismo cai sozinho na próxima leva, em vez de
                     # insistir com várias conexões contra quem já está
@@ -140,7 +167,10 @@ class Cliente:
                         f"{self._timeout(tentativa + 1)}s)…")
                     time.sleep(_espera(tentativa))
                     continue
-                raise PncpErro(f"HTTP {e.code} em {caminho}") from e
+                # o corpo do 4xx do PNCP costuma trazer o motivo de
+                # verdade — descartá-lo deixa só o código, sem nada pra
+                # diagnosticar sem reproduzir a chamada à mão
+                raise PncpErro(f"HTTP {e.code} em {caminho}{_motivo(e)}") from e
             except ValueError as e:
                 # 200 com corpo que não é JSON: o portal devolve página de
                 # erro HTML sob carga. json.loads levanta ValueError, que

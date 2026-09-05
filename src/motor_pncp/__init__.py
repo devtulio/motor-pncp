@@ -7,7 +7,17 @@ Não tem opinião sobre onde os dados vão parar — isso é problema de quem
 consome. Ver README.md.
 """
 from .configuracao import Config
-from .dominio import DATA_INICIO_PCA, DATA_INICIO_PNCP, JANELA_MAX_DIAS, MODALIDADES, amd, janelas
+from .dominio import (
+    DATA_INICIO_PCA,
+    DATA_INICIO_PNCP,
+    JANELA_MAX_DIAS,
+    MODALIDADES,
+    amd,
+    dt,
+    janelas,
+    num,
+    primeiro,
+)
 from .excecoes import ItensIndisponiveis, PncpErro, SyncCancelado
 from .motor import BASE, BASE_PNCP, Motor
 from .tipos import Ata, Contratacao, Contrato, Item, Orgao, PlanoPca, Resultado, TermoAditivo
@@ -15,7 +25,7 @@ from .tipos import Ata, Contratacao, Contrato, Item, Orgao, PlanoPca, Resultado,
 __all__ = [
     "Motor", "Config", "PncpErro", "SyncCancelado", "ItensIndisponiveis",
     "MODALIDADES", "DATA_INICIO_PNCP", "DATA_INICIO_PCA", "JANELA_MAX_DIAS",
-    "BASE", "BASE_PNCP", "janelas", "amd",
+    "BASE", "BASE_PNCP", "janelas", "amd", "num", "primeiro", "dt",
     "Contratacao", "Item", "Resultado", "Contrato", "Ata", "PlanoPca",
     "TermoAditivo", "Orgao",
 ]

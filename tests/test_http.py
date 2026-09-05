@@ -56,6 +56,30 @@ def test_5xx_persistente_vira_pncperro(urlopen_fake):
         cliente().get("https://x", "/y", {}, tentativas=3)
 
 
+def test_422_retenta_e_depois_funciona(urlopen_fake):
+    """Achado real: numa madrugada de 429/500/503/504 o portal também
+    devolveu 422 numa janela que, refeita, respondeu normalmente."""
+    urlopen_fake.append(erro_http(422))
+    urlopen_fake.append(resposta_json({"ok": True}))
+    assert cliente().get("https://x", "/y", {}, tentativas=3) == {"ok": True}
+
+
+def test_erro_persistente_inclui_motivo_do_corpo_na_mensagem(urlopen_fake):
+    class ErroComCorpo(urllib.error.HTTPError):
+        def read(self):
+            return b"Data inicial invalida ou anterior a 20210401"
+
+    urlopen_fake.append(ErroComCorpo("http://x", 422, "erro", {}, None))
+    with pytest.raises(PncpErro, match="Data inicial invalida"):
+        cliente().get("https://x", "/y", {}, tentativas=1)
+
+
+def test_erro_sem_corpo_legivel_nao_quebra_a_mensagem(urlopen_fake):
+    urlopen_fake.append(erro_http(422))  # fp=None — .read() não funciona
+    with pytest.raises(PncpErro, match="HTTP 422 em /y"):
+        cliente().get("https://x", "/y", {}, tentativas=1)
+
+
 def test_404_sem_flag_devolve_none(urlopen_fake):
     urlopen_fake.append(erro_http(404))
     assert cliente().get("https://x", "/y", {}, tentativas=3) is None
