@@ -2,6 +2,44 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
+## [0.3.1] — 2026-09-06
+
+Resultado de `/code-review high` (4 agentes independentes: linha a linha,
+regressão contra os 3 `pncp.py` de origem, reuso/simplificação/eficiência,
+altitude) e `/security-review` (zero achados — sem superfície de ataque).
+
+### Fixed
+- **Perda de dados silenciosa** — `Cliente.paginar` e `Motor.itens_da_compra`
+  não distinguiam "consulta sem registros" de "portal engasgou no meio da
+  listagem": página 2+ vazia depois de uma página que anunciou mais era
+  tratada como fim normal, a janela/contratação era marcada como concluída
+  e os registros restantes sumiam pra sempre. Proteção que o Licitarium
+  Pro já tinha (achado 2026-08-29) e não tinha sido portada. Agora levanta
+  `PncpErro`.
+- `contar_contratacoes()` não passava `modo_404="retry"`: um 404
+  transitório virava 0 sem marcar `parcial=True`, violando o próprio
+  contrato da função.
+- `ipca()` fazia requisição avulsa fora do `Cliente`, sem retry/backoff —
+  agora usa o mesmo caminho resiliente das outras fases.
+- `Config` aceitava `tentativas_padrao`/`tentativas_curtas` = 0, o que
+  fazia `Cliente.get` devolver `None` sem nunca tentar (falha virando
+  ausência). Agora valida `>= 1`.
+- Docstring de `pendente()` e do parâmetro `progresso` (thread-safety)
+  encorpados com casos de borda que faltavam.
+
+### Changed
+- `Cliente.get`: `erro_404`/`retry_404` (dois booleanos independentes)
+  viram `modo_404: Literal["ausente", "erro", "retry"]` — a 4ª combinação
+  deixa de ser "não usada" pra ser impossível. Interno (`Cliente` não é
+  API pública).
+- `Motor._baixar_com_disjuntor`: extrai o loop de disjuntor/progresso/
+  falha que `contratacoes()` e `_janela_generica()` duplicavam idêntico.
+  Comportamento e mensagens preservados.
+
+### Deferred (decisão, não omissão)
+- Unificar `itens_e_resultados()`/`termos_aditivos()`: mensagens de
+  disjuntor divergem por domínio; abstração pra 2 call sites não compensa.
+
 ## [0.3.0] — 2026-09-05
 
 ### Added
