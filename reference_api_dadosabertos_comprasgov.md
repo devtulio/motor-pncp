@@ -2,10 +2,7 @@
 name: reference_api_dadosabertos_comprasgov
 description: "API dadosabertos.compras.gov.br — cobertura PARCIAL (só quem opera via Compras.gov), modalidades no domínio SIASG (Dispensa=6, não 8), medida ao vivo em 2026-08-13"
 metadata: 
-  node_type: memory
   type: reference
-  originSessionId: daa359fa-07cd-4f8d-920f-7a48974844d1
-  modified: 2026-08-14T20:18:03.718Z
 ---
 
 # API Compras.gov.br Dados Abertos (dadosabertos.compras.gov.br)
@@ -64,6 +61,6 @@ jul/2026 — conferir o CONTEÚDO, nunca confiar no nome do arquivo.
   série. Gatilho de reabertura: cliente que use Compras.gov, ou itens
   passarem a vir com CATMAT.
 - **ALICE**: exige conta/bearer; alertas voltados ao gestor DENTRO do
-  Compras.gov; sem valor direto para o Licitarium Pro hoje — é o
+  Compras.gov; sem valor direto para os sistemas hoje — é o
   "concorrente" estatal de trilhas de auditoria (CGU), referência de
   método.

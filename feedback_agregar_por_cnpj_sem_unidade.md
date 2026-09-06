@@ -2,10 +2,7 @@
 name: feedback_agregar_por_cnpj_sem_unidade
 description: "No PNCP, agregar contratação por CNPJ de órgão sem olhar o campo unidade produz número errado sem nenhum aviso"
 metadata: 
-  node_type: memory
   type: feedback
-  originSessionId: f839e097-c77b-44b4-abee-ba4dd28ac2e4
-  modified: 2026-07-31T00:18:31.285Z
 ---
 
 O PNCP organiza contratação em **órgão** (CNPJ) e **unidade**. Há unidades de

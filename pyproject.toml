@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "motor-pncp"
-version = "0.4.0"
+version = "0.4.1"
 description = "Motor de coleta do PNCP: HTTP resiliente contra o portal, sem opinião sobre persistência."
 requires-python = ">=3.10"
 dependencies = []
@@ -14,6 +14,11 @@ dev = ["pytest>=7", "ruff>=0.6", "bandit>=1.7"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+# testar SEMPRE a árvore src/, mesmo com outra versão do pacote instalada
+# no site-packages (um consumidor pinado numa tag sombreia o editável)
+pythonpath = ["src"]
 
 [tool.ruff]
 line-length = 100

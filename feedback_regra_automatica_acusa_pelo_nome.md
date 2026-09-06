@@ -2,10 +2,7 @@
 name: feedback_regra_automatica_acusa_pelo_nome
 description: Regra que classifica entidade por texto sempre acusa inocente; ler os nomes reais antes de o resultado virar número
 metadata: 
-  node_type: memory
   type: feedback
-  originSessionId: f839e097-c77b-44b4-abee-ba4dd28ac2e4
-  modified: 2026-07-31T00:39:48.288Z
 ---
 
 Em pesquisa com dado público, toda regra que classifica por casamento de texto

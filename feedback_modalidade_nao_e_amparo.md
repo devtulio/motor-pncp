@@ -2,10 +2,7 @@
 name: feedback_modalidade_nao_e_amparo
 description: Modalidade do PNCP não determina o limite legal — o amparo determina; classificar por modalidade produz acusação falsa de irregularidade
 metadata: 
-  node_type: memory
   type: feedback
-  originSessionId: daa359fa-07cd-4f8d-920f-7a48974844d1
-  modified: 2026-08-12T22:53:21.959Z
 ---
 
 Em dados do PNCP, **modalidade não é amparo legal**. `modalidade_id=8`
@@ -13,7 +10,7 @@ Em dados do PNCP, **modalidade não é amparo legal**. `modalidade_id=8`
 14.133/2021" — é só o rótulo do procedimento. Quem define se existe teto de
 valor, e qual, é o `amparoLegal` (que vem dentro do `raw`, não é campo).
 
-No acervo real do Licitarium (13.891 dispensas) convivem três situações que
+No acervo real do sistema de origem (13.891 dispensas) convivem três situações que
 um filtro por modalidade mistura:
 
 - **Art. 75, II** (8.838) — compras e serviços comuns; único que responde ao

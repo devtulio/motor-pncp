@@ -2,10 +2,7 @@
 name: feedback_watcher_sem_saida
 description: Watcher em background precisa de condição de saída além do sinal esperado — e matar um processo exige desfazer quem esperava por ele
 metadata: 
-  node_type: memory
   type: feedback
-  originSessionId: 265c7a90-356a-4fd9-a7f9-5d6b5e7b391b
-  modified: 2026-08-01T23:59:47.937Z
 ---
 
 Monitor em background que espera um sinal (`until grep -q FIM arquivo; do

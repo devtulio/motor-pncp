@@ -2,10 +2,7 @@
 name: feedback_cruzar_dentro_do_orgao
 description: Município não é a unidade de comparação — Prefeitura e Câmara são entes distintos; cruzar plano de um com execução de outro produz número sem sentido
 metadata: 
-  node_type: memory
   type: feedback
-  originSessionId: daa359fa-07cd-4f8d-920f-7a48974844d1
-  modified: 2026-08-12T23:45:05.552Z
 ---
 
 Num município convivem **entes distintos com CNPJ próprio** — Prefeitura,

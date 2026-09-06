@@ -234,7 +234,7 @@ class Cliente:
         `totalPaginas` **não é** — é o portal engasgado no meio da
         listagem. Devolver o que já veio até ali gravaria a janela como
         completa e a marca d'água engoliria o resto pra sempre (achado
-        real do Licitarium Pro, 2026-08-29); por isso levanta `PncpErro`
+        real de um sistema irmão, 2026-08-29); por isso levanta `PncpErro`
         em vez de simplesmente parar.
         """
         pagina = 1

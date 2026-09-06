@@ -2,6 +2,22 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
+## [0.4.1] — 2026-09-06
+
+Repositório passou a ser **público** (pra CI dos sistemas consumidores
+conseguir instalar com o token padrão). Sem mudança de código.
+
+### Docs
+- Removidas menções a caminhos locais da máquina de desenvolvimento e a
+  sistemas pagos da mesma família; só os sistemas Free continuam
+  nomeados. Sistemas irmãos citados como origem de um achado viram
+  "sistema irmão"/"sistema de origem" — o achado e a data ficam.
+- Arquivos de lição na raiz: removido frontmatter interno
+  (`originSessionId`, `node_type`, `modified`) herdado do sistema de
+  notas de onde foram copiados.
+- Instalação em modo editável: `pip install -e .` (era um caminho
+  relativo específico).
+
 ## [0.4.0] — 2026-09-06
 
 ### Added
@@ -53,8 +69,8 @@ altitude) e `/security-review` (zero achados — sem superfície de ataque).
   não distinguiam "consulta sem registros" de "portal engasgou no meio da
   listagem": página 2+ vazia depois de uma página que anunciou mais era
   tratada como fim normal, a janela/contratação era marcada como concluída
-  e os registros restantes sumiam pra sempre. Proteção que o Licitarium
-  Pro já tinha (achado 2026-08-29) e não tinha sido portada. Agora levanta
+  e os registros restantes sumiam pra sempre. Proteção que um sistema irmão
+  já tinha (achado 2026-08-29) e não tinha sido portada. Agora levanta
   `PncpErro`.
 - `contar_contratacoes()` não passava `modo_404="retry"`: um 404
   transitório virava 0 sem marcar `parcial=True`, violando o próprio
@@ -87,7 +103,7 @@ altitude) e `/security-review` (zero achados — sem superfície de ataque).
   requisições diferentes — sem isso, um storm numa fila de milhares
   produzia uma linha idêntica por ocorrência no callback de `progresso`.
   Configurável via `Config.janela_operacional` (default 300s). Portado do
-  padrão `_registrar_operacional` do Licitarium Pro.
+  padrão `_registrar_operacional` de um sistema irmão.
 - `dominio.dt()`: parser de data/hora do PNCP ciente de fuso (string sem
   fuso explícito vira UTC direto, nunca horário local).
 
@@ -114,7 +130,7 @@ altitude) e `/security-review` (zero achados — sem superfície de ataque).
   sobre o JSON cru do PNCP (`.raw` continua sendo a fonte da verdade).
 - Cobertura completa da API: `Motor.contratos`, `.atas`, `.pca` (via
   `_janela_generica`, generalizando o padrão `_sync_por_janela` do
-  Licitarium Free/Pro) e `.termos_aditivos` (padrão do Licitarium Pro,
+  Licitarium Free) e `.termos_aditivos` (padrão de um sistema irmão,
   com o disjuntor que lá não tinha).
 - CI (GitHub Actions): pytest + ruff + bandit em push/PR, Python 3.10 e
   3.12.

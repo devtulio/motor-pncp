@@ -2,10 +2,7 @@
 name: feedback_denominador_populacao_residente
 description: População residente não descreve quem o município atende — Olímpia recebe 1 milhão de visitantes/ano para 55 mil habitantes
 metadata: 
-  node_type: memory
   type: feedback
-  originSessionId: daa359fa-07cd-4f8d-920f-7a48974844d1
-  modified: 2026-08-19T14:24:10.114Z
 ---
 
 Normalizar por **população residente** (IBGE) trata todo município como se

@@ -210,8 +210,8 @@ fase roda, a janela incremental (`last_sync_contratacoes`, etc.), o
 throttle contra rodar de novo cedo demais e o VACUUM do banco dependem
 de estado que só o seu sistema tem (config/log próprios) — e os 3
 sistemas de origem já orquestram de formas incompatíveis entre si (o
-Licitarium Pro roda a fase de itens GLOBAL, multi-tenant, sem o conceito
-de "município de referência" do Free/Pretiarium). Cada sistema mantém o
+um sistema multi-tenant roda a fase de itens GLOBAL, sem o conceito
+de "município de referência" dos sistemas Free). Cada sistema mantém o
 próprio `sincronizar_tudo`, chamando os métodos do `Motor` no lugar do
 `pncp.py` antigo.
 

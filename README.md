@@ -5,8 +5,8 @@
 Pacote `motor_pncp` (`src/`) — motor de coleta do PNCP, extraído do
 `pncp.py` do Pretiarium Free (2026-09-05, depois de 3 rodadas de auditoria
 sobre travamentos reais) para ser usado por qualquer sistema, sem cópia.
-Auditado contra as 3 variantes de origem (Licitarium Free, Licitarium
-Pro, Pretiarium Free) — ver [CHANGELOG.md](CHANGELOG.md).
+Auditado contra as variantes de origem (Licitarium Free, Pretiarium Free e
+um sistema irmão) — ver [CHANGELOG.md](CHANGELOG.md).
 
 Referência completa da API: [MANUAL.md](MANUAL.md).
 
@@ -74,13 +74,13 @@ Instalação em cada sistema consumidor — **pinada numa tag**, nunca em
 sistema sem você pedir):
 
 ```bash
-pip install "git+https://github.com/devtulio/motor-pncp.git@v0.4.0"
+pip install "git+https://github.com/devtulio/motor-pncp.git@v0.4.1"
 ```
 
 Em modo editável durante o desenvolvimento do próprio motor:
 
 ```bash
-pip install -e "../Motor de Coleta"
+pip install -e .
 ```
 
 ## Diagnóstico ao vivo
@@ -102,8 +102,7 @@ a cada push/PR (Python 3.10 e 3.12).
 
 ## Lições de coleta e interpretação de dados públicos
 
-Extraídas das memórias de trabalho. Cópias — os originais continuam em
-`~/.claude/projects/C--Users-devtu-Documents-Claude-Code/memory/`.
+Extraídas das notas de trabalho dos sistemas de origem.
 
 Origem: pesquisas com PNCP, Compras.gov, Siconfi e portais de transparência
 (2026). Cada arquivo mantém o formato de memória: fato, **Why** e

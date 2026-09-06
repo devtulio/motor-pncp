@@ -2,10 +2,7 @@
 name: feedback_api_publica_falha_vs_ausencia
 description: "Em coleta de dados por API, nunca cachear falha de rede como ausência de dado — e conferir se o filtro que você passou é de fato aplicado"
 metadata: 
-  node_type: memory
   type: feedback
-  originSessionId: f839e097-c77b-44b4-abee-ba4dd28ac2e4
-  modified: 2026-07-30T04:07:24.041Z
 ---
 
 Ao coletar dados de API pública para análise, dois erros silenciosos já

@@ -2,10 +2,7 @@
 name: feedback_auditoria_estatica_nao_ve_a_fronteira
 description: Auditoria de código + testes verdes não acha defeito de fronteira; rodar contra a API e os arquivos reais é uma segunda passada obrigatória
 metadata: 
-  node_type: memory
   type: feedback
-  originSessionId: 05271d3a-b116-43f5-b137-3acfc8ff3d1b
-  modified: 2026-08-04T21:39:44.179Z
 ---
 
 Auditoria estática (leitura integral + testes de unidade + mutação) e auditoria

@@ -2,13 +2,10 @@
 name: feedback_ni_fornecedor_cnpj_ou_cpf
 description: O niFornecedor do PNCP guarda CNPJ e CPF — máscara de CNPJ às cegas adultera o documento de pessoa física
 metadata: 
-  node_type: memory
   type: feedback
-  originSessionId: 265c7a90-356a-4fd9-a7f9-5d6b5e7b391b
-  modified: 2026-08-01T18:16:19.994Z
 ---
 
-O campo `niFornecedor` do PNCP (coluna `fornecedor_ni` no Licitarium) guarda
+O campo `niFornecedor` do PNCP (coluna `fornecedor_ni` no sistema de origem) guarda
 **CNPJ de 14 dígitos e CPF de 11**. No acervo real de Orindiúva são 34 pessoas
 físicas — 14 em `contratos` e 20 em `itens`.
 
