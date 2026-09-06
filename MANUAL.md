@@ -105,6 +105,14 @@ foi verificado).
 Variação mensal do IPCA (Banco Central, série SGS 433) desde `inicio`
 (`dd/mm/aaaa`). Gera `{"competencia": "aaaa-mm", "variacao": float}`.
 
+**Passe `inicio` incremental, não `None` toda vez.** Sem isso a série
+inteira (2021 → hoje, ~70 competências) é rebaixada em toda
+sincronização — desperdício puro, medido em 58x numa noite de
+diagnóstico. O motor não sabe quando você sincronizou pela última vez;
+guarde isso e passe **60 dias antes** da última sincronização (não 1
+dia, como nas outras janelas: o BCB revisa o índice do mês corrente por
+semanas depois da publicação original). `None` só na primeira vez.
+
 ---
 
 ## Config
@@ -123,7 +131,8 @@ medidos contra o PNCP real como default.
 | `timeouts` | `(30,45,60,75,90)` | Timeout de cada tentativa sucessiva. |
 | `intervalo_min` | `0.5` (s) | Pacing mínimo entre requisições sequenciais. |
 | `falhas_consecutivas_limite` | `5` | Falhas seguidas a partir das quais o disjuntor passa a olhar o tempo sem sucesso. |
-| `sem_sucesso_limite` | `600` (s) | Combinado com o limite acima, quando o disjuntor desiste da fase. |
+| `sem_sucesso_limite` | `600` (s) | Combinado com o limite acima, quando o disjuntor desiste da fase (falha lenta). |
+| `falhas_seguidas_teto` | `40` | Teto absoluto: desiste mesmo com o relógio aberto. Cobre a falha barata (escada curta durante storm), em que só o tempo deixaria mastigar a fila inteira. |
 | `janela_operacional` | `300` (s) | Avisos de retry da mesma causa ficam agrupados dentro desta janela. |
 
 ```python
@@ -204,6 +213,16 @@ Licitarium Pro roda a fase de itens GLOBAL, multi-tenant, sem o conceito
 de "município de referência" do Free/Pretiarium). Cada sistema mantém o
 próprio `sincronizar_tudo`, chamando os métodos do `Motor` no lugar do
 `pncp.py` antigo.
+
+### Índice em `municipio_ibge` (do seu schema, não do motor)
+
+Todo registro que o motor devolve carrega o município (você passa o
+`codigo_ibge`; guarde-o na linha). Toda consulta sua por município —
+inclusive a listagem de referência que uma tela costuma fazer no boot —
+varre a tabela inteira sem índice nessa coluna. Medido num acervo real
+(Pretiarium Free, 2026-09-06): **22,7s → 0,4s** só criando o índice em
+`itens` e `contratacoes`, zero mudança de query. Escala mal exatamente
+com o que cresce (mais municípios de referência = pior).
 
 ### `pendente()` — evite refetch caro
 

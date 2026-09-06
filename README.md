@@ -76,7 +76,7 @@ desenvolvimento:
 pip install -e "../Motor de Coleta"
 ```
 
-Testes: `pip install -e ".[dev]" && pytest` (75 testes, focados na lógica
+Testes: `pip install -e ".[dev]" && pytest` (76 testes, focados na lógica
 de resiliência — disjuntor, paralelismo/tentativas adaptativos, dedup de
 avisos, classificação de erro HTTP, e o vazamento de thread do achado 8).
 `ruff check src tests` e `bandit -q -c pyproject.toml -r src` rodam no CI

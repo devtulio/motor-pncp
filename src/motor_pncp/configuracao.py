@@ -49,6 +49,18 @@ class Config:
     `falhas_consecutivas_limite`, a partir dos quais o disjuntor desiste
     da fase."""
 
+    falhas_seguidas_teto: int = 40
+    """Teto absoluto de falhas seguidas — desiste da fase mesmo que o
+    relógio de `sem_sucesso_limite` ainda não tenha fechado. Existe
+    porque `sem_sucesso_limite` foi calibrado pra falha LENTA (~5min pela
+    escada cheia); quando um storm confirmado encurta a escada
+    (`tentativas_curtas`), cada falha passa a custar segundos, e só o
+    relógio deixaria o disjuntor mastigar a fila inteira antes de
+    desistir (medido: 139-196 falhas seguidas, 36-86% da fila, 0 itens
+    gravados). 40 é o pior caso normal de ruído que o próprio limiar de
+    tempo já esperava — preserva a tolerância a tropeço isolado, só corta
+    o caso em que a contagem passa MUITO disso."""
+
     janela_operacional: float = 300
     """Segundos: avisos de retry da MESMA causa (ex.: HTTP 503) em
     requisições diferentes ficam em silêncio dentro desta janela depois

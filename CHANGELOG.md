@@ -2,6 +2,28 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
+## [0.3.2] — 2026-09-06
+
+Portado do `relatorio_correcoes_motor_sync_pncp.md` (rodadas 4-5, sessão
+do Pretiarium Free, 2026-09-06).
+
+### Fixed
+- **Disjuntor sem teto de contagem** (achado 11): `sem_sucesso_limite`
+  (600s) foi calibrado pra falha lenta (~5min, escada cheia). Quando um
+  storm confirmado encurta a escada (`tentativas_curtas`), cada falha
+  passa a custar segundos e só o relógio deixava o disjuntor mastigar a
+  fila inteira — medido: 139-196 falhas seguidas, 36-86% da fila, 0
+  itens gravados. Novo `Config.falhas_seguidas_teto` (40) corta antes.
+  O motor tinha exatamente a combinação que dispara isso (achados 5+10)
+  sem o 11.
+
+### Docs
+- `ipca()`: passar `inicio` incremental (60 dias antes da última
+  sincronização), não `None` toda vez — a série inteira era rebaixada em
+  toda sync (achado 12; a parte de persistência fica com o chamador).
+- Dica de índice em `municipio_ibge` no schema do consumidor (22,7s →
+  0,4s medido).
+
 ## [0.3.1] — 2026-09-06
 
 Resultado de `/code-review high` (4 agentes independentes: linha a linha,

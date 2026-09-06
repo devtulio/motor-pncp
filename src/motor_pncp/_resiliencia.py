@@ -106,8 +106,17 @@ class Disjuntor:
         self.desde = time.monotonic()
 
     def falha(self):
-        """True quando é hora de desistir da fase."""
+        """True quando é hora de desistir da fase.
+
+        Dois critérios, e basta um: (a) teto absoluto de contagem — cobre
+        a falha BARATA (escada curta durante storm), em que o relógio
+        sozinho deixaria a fase mastigar centenas de itens; (b) contagem
+        mínima E tempo sem sucesso — cobre a falha LENTA, em que a
+        contagem sozinha desistiria por ruído normal de fila grande.
+        """
         self.seguidas += 1
+        if self.seguidas >= self._config.falhas_seguidas_teto:
+            return True
         return (self.seguidas >= self._config.falhas_consecutivas_limite
                 and time.monotonic() - self.desde >= self._config.sem_sucesso_limite)
 

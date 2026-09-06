@@ -46,6 +46,23 @@ def test_disjuntor_sucesso_intercalado_reseta_o_relogio(monkeypatch):
     assert d.falha() is False  # relógio zerado, só 1 falha seguida agora
 
 
+def test_disjuntor_teto_absoluto_corta_mesmo_com_falha_rapida(monkeypatch):
+    """Achado 11 (Pretiarium Free, 2026-09-06): com a escada curta, cada
+    falha custa segundos, e só o relógio de sem_sucesso_limite deixava o
+    disjuntor mastigar 139-196 itens antes de desistir. O teto de
+    contagem corta bem antes do relógio fechar."""
+    relogio = [0.0]
+    monkeypatch.setattr(time, "monotonic", lambda: relogio[0])
+    d = Disjuntor(CFG)
+    for _ in range(CFG.falhas_seguidas_teto - 1):
+        relogio[0] += 3  # falha barata: 3s, não minutos
+        assert d.falha() is False
+    relogio[0] += 3
+    assert d.falha() is True
+    # prova de que foi o teto, não o relógio: ainda longe do limite de tempo
+    assert relogio[0] < CFG.sem_sucesso_limite
+
+
 def test_disjuntor_respeita_config_customizado(monkeypatch):
     relogio = [0.0]
     monkeypatch.setattr(time, "monotonic", lambda: relogio[0])
