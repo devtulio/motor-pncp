@@ -70,36 +70,38 @@ class Motor:
         self._base = base
         self._base_pncp = base_pncp
 
-    # ── infraestrutura comum das fases por janela de data ───────────────
+    # ── infraestrutura comum das fases baixadas em paralelo com disjuntor ─
 
-    def _janela_generica(self, caminho, params_extra, inicio, fim, *, rotulo_fase,
-                         chaves_data=("dataInicial", "dataFinal"),
-                         tamanho_pagina=500):
-        """Baixa uma fase que consulta por CNPJ + janela de datas, sem o
-        loop de modalidade de `contratacoes` (contratos, atas, PCA).
+    def _baixar_com_disjuntor(self, caminho, consultas, *, rotulo_fase,
+                              tamanho_pagina=500):
+        """Baixa uma lista de `(rótulo, params)` com disjuntor e beacon de
+        progresso, gerando os registros crus conforme chegam.
 
-        Mesma semântica de disjuntor/falha de `contratacoes`: gera os
-        registros crus conforme chegam, e levanta `PncpErro` no final (ou
-        cedo, se o disjuntor desistir) se alguma janela falhou.
+        Compartilhada por toda fase que baixa uma lista fixa de consultas
+        em paralelo (contratações, contratos, atas, PCA) — a única
+        diferença entre elas é como cada uma monta `consultas` e em que
+        tipo embrulha o resultado; a resiliência (disjuntor, mensagens de
+        falha, fechamento do gerador) é uma preocupação só, não uma por
+        fase. Levanta `PncpErro` — cedo, se o disjuntor desistir da fase,
+        ou no final, se alguma consulta falhou sem disparar o disjuntor —
+        sempre preservando o que já foi gerado antes disso (falha ≠
+        ausência; não avance sua marca d'água sobre uma falha parcial).
         """
-        ini_chave, fim_chave = chaves_data
-        consultas = [(amd(a), {**params_extra, ini_chave: amd(a), fim_chave: amd(b)})
-                    for a, b in janelas(inicio, fim)]
         disjuntor = Disjuntor(self._config)
         falhas = []
         gerador = self._cliente.baixar(self._base, caminho, consultas, tamanho_pagina)
         try:
             for feitas, (rotulo, lote, erro) in enumerate(gerador, 1):
                 self._cliente.avisar_progresso(
-                    f"{rotulo_fase} — janela {rotulo} ({feitas}/{len(consultas)})…")
+                    f"{rotulo_fase} — {rotulo} ({feitas}/{len(consultas)})…")
                 if erro:
-                    falhas.append(str(erro))
+                    falhas.append(f"{rotulo}: {erro}")
                     if disjuntor.falha():
                         raise PncpErro(
                             f"{rotulo_fase}: parado após {disjuntor.seguidas} "
                             f"falhas seguidas e {disjuntor.mudo_ha}min sem "
                             f"nenhuma resposta boa — "
-                            f"{len(consultas) - feitas} janelas não "
+                            f"{len(consultas) - feitas} consultas não "
                             f"tentadas — {falhas[0]}")
                     continue
                 disjuntor.sucesso()
@@ -108,7 +110,20 @@ class Motor:
             gerador.close()
         if falhas:
             raise PncpErro(f"{rotulo_fase}: {len(falhas)} de {len(consultas)} "
-                           f"janelas falharam — {falhas[0]}")
+                           f"consultas falharam — {falhas[0]}")
+
+    def _janela_generica(self, caminho, params_extra, inicio, fim, *, rotulo_fase,
+                         chaves_data=("dataInicial", "dataFinal"),
+                         tamanho_pagina=500):
+        """Monta as consultas de uma fase que consulta por CNPJ + janela
+        de datas, sem o loop de modalidade de `contratacoes` (contratos,
+        atas, PCA), e delega o download pra `_baixar_com_disjuntor`."""
+        ini_chave, fim_chave = chaves_data
+        consultas = [(amd(a), {**params_extra, ini_chave: amd(a), fim_chave: amd(b)})
+                    for a, b in janelas(inicio, fim)]
+        yield from self._baixar_com_disjuntor(caminho, consultas,
+                                              rotulo_fase=rotulo_fase,
+                                              tamanho_pagina=tamanho_pagina)
 
     # ── contratações ─────────────────────────────────────────────────────
 
@@ -133,32 +148,10 @@ class Motor:
                              "codigoMunicipioIbge": codigo_ibge})
                     for codigo, nome in MODALIDADES.items()
                     for a, b in janelas(inicio, fim)]
-        disjuntor = Disjuntor(self._config)
-        falhas = []
-        gerador = self._cliente.baixar(self._base, "/v1/contratacoes/atualizacao",
-                                       consultas, 50)
-        try:
-            for feitas, (nome, lote, erro) in enumerate(gerador, 1):
-                self._cliente.avisar_progresso(
-                    f"Contratações — {nome} ({feitas}/{len(consultas)})…")
-                if erro:
-                    falhas.append(f"{nome}: {erro}")
-                    if disjuntor.falha():
-                        raise PncpErro(
-                            f"parado após {disjuntor.seguidas} falhas "
-                            f"seguidas e {disjuntor.mudo_ha}min sem "
-                            f"nenhuma resposta boa — "
-                            f"{len(consultas) - feitas} consultas não "
-                            f"tentadas — {falhas[0]}")
-                    continue
-                disjuntor.sucesso()
-                for raw in lote:
-                    yield Contratacao(raw)
-        finally:
-            gerador.close()
-        if falhas:
-            raise PncpErro(f"{len(falhas)} de {len(consultas)} consultas "
-                           f"falharam — {falhas[0]}")
+        for raw in self._baixar_com_disjuntor("/v1/contratacoes/atualizacao",
+                                              consultas, rotulo_fase="Contratações",
+                                              tamanho_pagina=50):
+            yield Contratacao(raw)
 
     def contar_contratacoes(self, codigo_ibge, inicio=DATA_INICIO_PNCP, fim=None):
         """Quantas contratações um município tem, sem baixar nenhuma.
@@ -183,7 +176,7 @@ class Motor:
             nonlocal falhas
             try:
                 d = self._cliente.get(self._base, "/v1/contratacoes/atualizacao",
-                                      params, pacing=conexoes <= 1, retry_404=True)
+                                      params, pacing=conexoes <= 1, modo_404="retry")
             except PncpErro:
                 falhas += 1
                 return 0
@@ -259,7 +252,7 @@ class Motor:
             lote = self._cliente.get(
                 self._base_pncp,
                 f"/v1/orgaos/{cnpj}/compras/{ano}/{sequencial}/itens",
-                {"pagina": pagina, "tamanhoPagina": 100}, erro_404=True)
+                {"pagina": pagina, "tamanhoPagina": 100}, modo_404="erro")
             if not lote:
                 if pagina > 1:
                     raise PncpErro(
@@ -381,7 +374,7 @@ class Motor:
         r = self._cliente.get(
             self._base_pncp,
             f"/v1/orgaos/{cnpj}/contratos/{ano}/{sequencial}/termos/quantidade",
-            {}, erro_404=True)
+            {}, modo_404="erro")
         if isinstance(r, dict):
             return r.get("quantidade", 0)
         return r or 0
@@ -390,7 +383,7 @@ class Motor:
         return self._cliente.get(
             self._base_pncp,
             f"/v1/orgaos/{cnpj}/contratos/{ano}/{sequencial}/termos",
-            {}, erro_404=True) or []
+            {}, modo_404="erro") or []
 
     def termos_aditivos(self, contratos, *, on_erro=None):
         """Para cada contrato, busca os termos aditivos (se houver).

@@ -14,6 +14,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from typing import Literal
 
 from ._resiliencia import Dedup
 from .configuracao import Config
@@ -99,19 +100,28 @@ class Cliente:
             self.avisar_progresso(emitir)
 
     def get(self, url_base, caminho, params, *, tentativas=None, pacing=True,
-            erro_404=False, retry_404=False):
+            modo_404: Literal["ausente", "erro", "retry"] = "ausente"):
         """GET com pacing e retry/backoff. Dict do JSON, ou None sem dados.
 
-        `retry_404=True` para LISTAGENS (contratações/itens/contratos/
-        atas/PCA): "sem registros" ali é 204/corpo vazio, nunca 404 — um
-        404 é falha transitória do portal; sem isso ele vira "janela
-        vazia" e quem persiste avança a marca d'água sobre dados nunca
-        baixados.
+        `modo_404` decide o que um 404 significa — não é sempre a mesma
+        coisa no PNCP, e as três leituras têm cada uma um consumidor real
+        (por isso um valor só, não dois booleanos independentes: as três
+        opções são mutuamente exclusivas por natureza, nunca "um pouco de
+        cada").
 
-        `erro_404=True` faz 404 virar `ItensIndisponiveis` em vez de
-        `None`: usado em listagens de UM registro específico (itens de
-        uma contratação, termos de um contrato), onde 404 também não
-        significa "sem registro" (ver `ItensIndisponiveis`).
+        `"ausente"` (default): 404 é semântico — "CNPJ não existe", "item
+        sem resultado homologado" — devolve `None`.
+
+        `"retry"`: para LISTAGENS (contratações/itens/contratos/atas/
+        PCA), onde "sem registros" é 204/corpo vazio, nunca 404 — um 404
+        aqui é falha transitória do portal; sem isso ele vira "janela
+        vazia" e quem persiste avança a marca d'água sobre dados nunca
+        baixados. Retenta e, se persistir, levanta `PncpErro`.
+
+        `"erro"`: 404 vira `ItensIndisponiveis` na hora — usado em
+        listagens de UM registro específico (itens de uma contratação,
+        termos de um contrato), onde 404 também não significa "sem
+        registro" (ver `ItensIndisponiveis`).
         """
         if tentativas is None:
             tentativas = self._adaptativo.tentativas_atual()
@@ -141,9 +151,9 @@ class Cliente:
                     # vazio quando não há registros na janela
                     return json.loads(corpo) if corpo.strip() else None
             except urllib.error.HTTPError as e:
-                if e.code == 404 and erro_404:
+                if e.code == 404 and modo_404 == "erro":
                     raise ItensIndisponiveis(f"HTTP 404 em {caminho}") from e
-                if e.code == 404 and retry_404:
+                if e.code == 404 and modo_404 == "retry":
                     if tentativa < tentativas - 1:
                         self._adaptativo.registrar_bloqueio()
                         self._avisar_causa_recorrente(
@@ -232,7 +242,7 @@ class Cliente:
             dados = self.get(url_base, caminho,
                              {**params, "pagina": pagina,
                               "tamanhoPagina": tamanho_pagina},
-                             pacing=pacing, retry_404=True)
+                             pacing=pacing, modo_404="retry")
             if not dados or not dados.get("data"):
                 if pagina > 1:
                     raise PncpErro(

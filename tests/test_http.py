@@ -85,23 +85,23 @@ def test_404_sem_flag_devolve_none(urlopen_fake):
     assert cliente().get("https://x", "/y", {}, tentativas=3) is None
 
 
-def test_404_com_erro_404_vira_itens_indisponiveis(urlopen_fake):
+def test_404_com_modo_erro_vira_itens_indisponiveis(urlopen_fake):
     urlopen_fake.append(erro_http(404))
     with pytest.raises(ItensIndisponiveis):
-        cliente().get("https://x", "/y", {}, tentativas=3, erro_404=True)
+        cliente().get("https://x", "/y", {}, tentativas=3, modo_404="erro")
 
 
-def test_404_com_retry_404_retenta_e_desiste_com_pncperro(urlopen_fake):
+def test_404_com_modo_retry_retenta_e_desiste_com_pncperro(urlopen_fake):
     urlopen_fake.extend([erro_http(404)] * 3)
     with pytest.raises(PncpErro):
-        cliente().get("https://x", "/y", {}, tentativas=3, retry_404=True)
+        cliente().get("https://x", "/y", {}, tentativas=3, modo_404="retry")
 
 
-def test_404_com_retry_404_recupera(urlopen_fake):
+def test_404_com_modo_retry_recupera(urlopen_fake):
     urlopen_fake.append(erro_http(404))
     urlopen_fake.append(resposta_json({"data": []}))
     assert cliente().get("https://x", "/y", {}, tentativas=3,
-                         retry_404=True) == {"data": []}
+                         modo_404="retry") == {"data": []}
 
 
 def test_json_ilegivel_retenta_e_desiste_com_pncperro(urlopen_fake):

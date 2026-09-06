@@ -168,9 +168,9 @@ def test_itens_da_compra_pagina_1_vazia_e_legitima(monkeypatch):
 # ── contar_contratacoes() ────────────────────────────────────────────────
 
 def test_contar_contratacoes_404_persistente_marca_parcial(monkeypatch):
-    """`retry_404` faltava aqui — um 404 transitório do portal virava 0
-    silencioso, sem marcar `parcial`, violando o próprio contrato da
-    função."""
+    """`modo_404="retry"` faltava aqui — um 404 transitório do portal
+    virava 0 silencioso, sem marcar `parcial`, violando o próprio
+    contrato da função."""
     monkeypatch.setattr(
         Cliente, "get",
         lambda self, *a, **k: (_ for _ in ()).throw(PncpErro("HTTP 404")))
