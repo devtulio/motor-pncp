@@ -145,6 +145,64 @@ def test_pca_nao_consulta_nada_se_janela_inteira_e_anterior_ao_minimo(monkeypatc
     assert resultado == []
 
 
+# ── itens_da_compra() ────────────────────────────────────────────────────
+
+def test_itens_da_compra_pagina_vazia_apos_pagina_cheia_vira_pncperro(monkeypatch):
+    """Mesmo achado do Licitarium Pro (2026-08-29) aplicado ao paginador
+    de itens, que não usa o envelope totalPaginas — o único sinal de
+    página cheia é vir com exatamente 100 registros."""
+    pagina_cheia = [{"numeroItem": i} for i in range(100)]
+    respostas = iter([pagina_cheia, []])
+    monkeypatch.setattr(
+        Cliente, "get",
+        lambda self, *a, **k: next(respostas))
+    with pytest.raises(PncpErro, match="página 2 veio vazia"):
+        list(Motor().itens_da_compra("1", 2024, 1))
+
+
+def test_itens_da_compra_pagina_1_vazia_e_legitima(monkeypatch):
+    monkeypatch.setattr(Cliente, "get", lambda self, *a, **k: [])
+    assert list(Motor().itens_da_compra("1", 2024, 1)) == []
+
+
+# ── contar_contratacoes() ────────────────────────────────────────────────
+
+def test_contar_contratacoes_404_persistente_marca_parcial(monkeypatch):
+    """`retry_404` faltava aqui — um 404 transitório do portal virava 0
+    silencioso, sem marcar `parcial`, violando o próprio contrato da
+    função."""
+    monkeypatch.setattr(
+        Cliente, "get",
+        lambda self, *a, **k: (_ for _ in ()).throw(PncpErro("HTTP 404")))
+    resultado = Motor().contar_contratacoes(123, date(2024, 1, 1), date(2024, 1, 1))
+    assert resultado["parcial"] is True
+    assert resultado["total"] == 0
+
+
+# ── ipca() ───────────────────────────────────────────────────────────────
+
+def test_ipca_usa_o_cliente_e_gera_competencias(monkeypatch):
+    monkeypatch.setattr(
+        Cliente, "get",
+        lambda self, *a, **k: [{"data": "01/01/2026", "valor": "0.5"}])
+    resultado = list(Motor().ipca())
+    assert resultado == [{"competencia": "2026-01", "variacao": 0.5}]
+
+
+def test_ipca_none_nao_quebra(monkeypatch):
+    monkeypatch.setattr(Cliente, "get", lambda self, *a, **k: None)
+    assert list(Motor().ipca()) == []
+
+
+def test_ipca_propaga_pncperro_do_cliente(monkeypatch):
+    def get_fake(self, *a, **k):
+        raise PncpErro("BCB fora do ar")
+
+    monkeypatch.setattr(Cliente, "get", get_fake)
+    with pytest.raises(PncpErro, match="BCB fora do ar"):
+        list(Motor().ipca())
+
+
 # ── itens_e_resultados() ─────────────────────────────────────────────────
 
 def test_itens_e_resultados_busca_resultado_so_dos_itens_com_resultado(monkeypatch):

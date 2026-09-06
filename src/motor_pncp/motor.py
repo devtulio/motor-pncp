@@ -11,10 +11,6 @@ explícito o que já era verdade.
 Ver README.md para o porquê de cada limiar de resiliência (em `Config`).
 """
 import concurrent.futures
-import http.client
-import json
-import urllib.error
-import urllib.request
 from datetime import date
 
 from ._http import USER_AGENT_PADRAO, Cliente
@@ -37,8 +33,7 @@ BASE = "https://pncp.gov.br/api/consulta"
 # envelope data/totalPaginas).
 BASE_PNCP = "https://pncp.gov.br/api/pncp"
 
-_URL_IPCA = ("https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados"
-            "?formato=json&dataInicial={inicio}")
+_URL_BCB = "https://api.bcb.gov.br"
 
 __all__ = [
     "Motor", "Config", "PncpErro", "SyncCancelado", "ItensIndisponiveis",
@@ -188,7 +183,7 @@ class Motor:
             nonlocal falhas
             try:
                 d = self._cliente.get(self._base, "/v1/contratacoes/atualizacao",
-                                      params, pacing=conexoes <= 1)
+                                      params, pacing=conexoes <= 1, retry_404=True)
             except PncpErro:
                 falhas += 1
                 return 0
@@ -246,10 +241,18 @@ class Motor:
     # ── itens e resultados ───────────────────────────────────────────────
 
     def itens_da_compra(self, cnpj, ano, sequencial):
-        """Gera `Item` de uma contratação (array puro, paginado).
+        """Gera `Item` de uma contratação (endpoint devolve array puro,
+        paginado — sem envelope `totalPaginas`; o único sinal de fim é a
+        página vir com MENOS de `tamanhoPagina`).
 
         Levanta `ItensIndisponiveis` em 404 — não confundir com "esta
-        contratação não tem item nenhum" (ver a exceção).
+        contratação não tem item nenhum" (ver a exceção). Página 1 vazia
+        é legítima; página 2+ vazia depois de uma página cheia não é —
+        mesmo raciocínio (e mesmo incidente real, 2026-08-29) do guard em
+        `Cliente.paginar`: sem ele, um soluço do portal no meio da
+        listagem terminava a coleta calada, a contratação era carimbada
+        como concluída, e os itens que faltaram ficavam faltando pra
+        sempre.
         """
         pagina = 1
         while True:
@@ -258,6 +261,11 @@ class Motor:
                 f"/v1/orgaos/{cnpj}/compras/{ano}/{sequencial}/itens",
                 {"pagina": pagina, "tamanhoPagina": 100}, erro_404=True)
             if not lote:
+                if pagina > 1:
+                    raise PncpErro(
+                        f"paginação de itens interrompida em "
+                        f"{cnpj}/{ano}/{sequencial}: página {pagina} veio "
+                        "vazia depois de uma página cheia")
                 return
             for raw in lote:
                 yield Item(raw)
@@ -291,7 +299,14 @@ class Motor:
         de novo. Sem isso, todo item com `temResultado` busca resultado
         sempre — caro numa contratação já conhecida onde só a
         `dataAtualizacao` cosmética mudou. Você decide com base no que já
-        tem gravado; o motor não sabe.
+        tem gravado; o motor não sabe. **Cuidado ao implementar**: não
+        basta comparar `item.data_atualizacao` com o que você já tem —
+        uma coleta anterior pode ter sido interrompida DEPOIS de listar o
+        item mas ANTES de buscar o resultado dele; nesse caso a
+        `dataAtualizacao` não muda, e um `pendente` que só olha a data
+        deixa esse item sem resultado pra sempre. Trate como pendente
+        também quando `item.tem_resultado` é `True` mas o resultado que
+        você já tem gravado pra ele é `None`.
 
         `on_erro(contratacao, excecao)`, opcional: chamado a cada
         contratação que falhar. O motor continua as demais e só desiste
@@ -432,17 +447,21 @@ class Motor:
         Fonte: Banco Central (série SGS 433), citável no processo. Preço
         de anos diferentes não se compara sem essa correção — a inflação
         acumulada num acervo de vários anos passa de 20%.
+
+        Passa pelo mesmo `Cliente` das demais fases — mesmo retry/backoff
+        e classificação de erro em `PncpErro`, em vez de uma tentativa
+        única sem chance de se recuperar de um soluço passageiro do BCB.
+        Efeito colateral aceito: uma falha do BCB soma no mesmo contador
+        de bloqueios do PNCP (`Adaptativo` é por `Motor`, não por host) —
+        chamada única no início da coleta, se autocorrige no primeiro
+        sucesso da fase seguinte.
         """
         inicio = inicio or f"01/01/{DATA_INICIO_PNCP.year}"
-        req = urllib.request.Request(
-            _URL_IPCA.format(inicio=inicio),
-            headers={"User-Agent": self._cliente._user_agent})
-        try:
-            with urllib.request.urlopen(req, timeout=30) as r:
-                dados = json.loads(r.read().decode("utf-8"))
-        except (urllib.error.URLError, ValueError, TimeoutError, OSError,
-                http.client.HTTPException) as e:
-            raise PncpErro(f"não consegui baixar o IPCA: {e}") from e
+        dados = self._cliente.get(
+            _URL_BCB, "/dados/serie/bcdata.sgs.433/dados",
+            {"formato": "json", "dataInicial": inicio})
+        if dados is None:
+            return
         for linha in dados:
             try:
                 dia, mes, ano = linha["data"].split("/")

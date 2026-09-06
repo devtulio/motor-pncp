@@ -55,3 +55,13 @@ class Config:
     do primeiro, e a próxima emissão resume quantos ficaram represados —
     sem isso, um storm em uma fila de milhares produz uma linha idêntica
     por requisição."""
+
+    def __post_init__(self):
+        # tentativas=0 faria `for tentativa in range(0):` não executar
+        # nenhuma vez — `Cliente.get` cairia direto no `return None`
+        # implícito, uma falha de configuração virando silenciosamente
+        # "sem dados" (exatamente o "falha ≠ ausência" que o resto do
+        # motor existe pra evitar).
+        if self.tentativas_padrao < 1 or self.tentativas_curtas < 1:
+            raise ValueError(
+                "tentativas_padrao e tentativas_curtas precisam ser >= 1")

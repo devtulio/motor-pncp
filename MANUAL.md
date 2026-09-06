@@ -29,7 +29,7 @@ estado adaptativo (bloqueios/sucessos recentes, pacing, dedup de avisos)
 |---|---|
 | `config` | Limiares de resiliência. Ver [Config](#config). |
 | `user_agent` | Enviado em toda requisição. Identifique seu sistema — o PNCP não exige, mas ajuda a instituição a saber quem está batendo na API dela. |
-| `progresso` | `callable(str)` opcional, chamado a cada ponto natural da coleta (contratação processada, retry em andamento). Levantar `SyncCancelado` de dentro dele interrompe a coleta no próximo ponto de checagem — não no meio de uma requisição em voo. |
+| `progresso` | `callable(str)` opcional, chamado a cada ponto natural da coleta (contratação processada, retry em andamento). Levantar `SyncCancelado` de dentro dele interrompe a coleta no próximo ponto de checagem — não no meio de uma requisição em voo. **Precisa ser thread-safe**: `itens_e_resultados` busca resultados em paralelo, e retries de requisições concorrentes chamam `progresso` de threads diferentes ao mesmo tempo. |
 | `base` / `base_pncp` | URLs base — normalmente não precisam mudar; existem pra testes/mocks. |
 
 ### `contratacoes(codigo_ibge, inicio, fim) -> Iterator[Contratacao]`

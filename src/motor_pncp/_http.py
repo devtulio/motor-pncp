@@ -217,7 +217,16 @@ class Cliente:
                 raise PncpErro(f"sem conexão com o PNCP ({e})") from e
 
     def paginar(self, url_base, caminho, params, tamanho_pagina, pacing=True):
-        """Itera todos os registros de todas as páginas de uma consulta."""
+        """Itera todos os registros de todas as páginas de uma consulta.
+
+        Página 1 vazia é legítima (consulta sem nenhum registro). Página
+        2+ vazia depois de uma página anterior que anunciou mais
+        `totalPaginas` **não é** — é o portal engasgado no meio da
+        listagem. Devolver o que já veio até ali gravaria a janela como
+        completa e a marca d'água engoliria o resto pra sempre (achado
+        real do Licitarium Pro, 2026-08-29); por isso levanta `PncpErro`
+        em vez de simplesmente parar.
+        """
         pagina = 1
         while True:
             dados = self.get(url_base, caminho,
@@ -225,6 +234,10 @@ class Cliente:
                               "tamanhoPagina": tamanho_pagina},
                              pacing=pacing, retry_404=True)
             if not dados or not dados.get("data"):
+                if pagina > 1:
+                    raise PncpErro(
+                        f"paginação interrompida em {caminho}: página "
+                        f"{pagina} veio vazia mas havia mais anunciadas")
                 return
             yield from dados["data"]
             if pagina >= dados.get("totalPaginas", 1):

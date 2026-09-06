@@ -165,6 +165,23 @@ def test_beacon_quebrado_nao_derruba_o_retry(urlopen_fake):
     assert c.get("https://x", "/y", {}, tentativas=3) == {"ok": True}
 
 
+def test_paginar_pagina_vazia_apos_pagina_cheia_vira_pncperro(urlopen_fake):
+    """Achado real (Licitarium Pro, 2026-08-29): página 2 vazia depois de
+    uma página 1 que anunciou mais totalPaginas é o portal engasgado no
+    meio da listagem, não "acabou" — devolver o que veio até ali gravaria
+    a janela como completa e perderia o resto pra sempre."""
+    urlopen_fake.append(resposta_json(
+        {"data": [{"id": 1}], "totalPaginas": 2}))
+    urlopen_fake.append(resposta_json({"data": [], "totalPaginas": 2}))
+    with pytest.raises(PncpErro, match="página 2 veio vazia"):
+        list(cliente().paginar("https://x", "/y", {}, 50))
+
+
+def test_paginar_pagina_1_vazia_e_legitima(urlopen_fake):
+    urlopen_fake.append(resposta_json({"data": [], "totalPaginas": 1}))
+    assert list(cliente().paginar("https://x", "/y", {}, 50)) == []
+
+
 def test_beacon_agrupa_a_mesma_falha_entre_requisicoes_diferentes(urlopen_fake):
     """O storm real que motivou isso: centenas de contratações DIFERENTES
     batendo 503 — não é retry de uma só requisição, é a mesma causa se
