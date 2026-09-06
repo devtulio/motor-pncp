@@ -69,14 +69,32 @@ for contrato, termos in motor.termos_aditivos(meus_contratos_pendentes):
         meu_upsert_termo(contrato, termo)
 ```
 
-Instalação em cada sistema consumidor, em modo editável durante o
-desenvolvimento:
+Instalação em cada sistema consumidor — **pinada numa tag**, nunca em
+`master` (uma correção no motor não pode mudar o comportamento do seu
+sistema sem você pedir):
+
+```bash
+pip install "git+https://github.com/devtulio/motor-pncp.git@v0.4.0"
+```
+
+Em modo editável durante o desenvolvimento do próprio motor:
 
 ```bash
 pip install -e "../Motor de Coleta"
 ```
 
-Testes: `pip install -e ".[dev]" && pytest` (76 testes, focados na lógica
+## Diagnóstico ao vivo
+
+```bash
+python -m motor_pncp 3553401 --dias 60
+```
+
+Roda cada fase contra o PNCP real num município e separa por host
+(`api/consulta` × `api/pncp`, que caem independentemente) — pra responder
+"o motor quebrou ou o portal caiu?" sem abrir código. Não grava nada.
+Sai com código 1 se alguma fase falhou. Ver [MANUAL.md](MANUAL.md#diagnóstico-ao-vivo).
+
+Testes: `pip install -e ".[dev]" && pytest` (79 testes, focados na lógica
 de resiliência — disjuntor, paralelismo/tentativas adaptativos, dedup de
 avisos, classificação de erro HTTP, e o vazamento de thread do achado 8).
 `ruff check src tests` e `bandit -q -c pyproject.toml -r src` rodam no CI

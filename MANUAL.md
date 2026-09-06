@@ -11,6 +11,7 @@ ver [README.md](README.md).
 - [Exceções](#exceções)
 - [Helpers de domínio](#helpers-de-domínio)
 - [Padrões de uso](#padrões-de-uso)
+- [Diagnóstico ao vivo](#diagnóstico-ao-vivo)
 
 ---
 
@@ -273,3 +274,35 @@ que já foi gerado antes já foi processado por você** — mas a fase não
 terminou. Não avance sua marca d'água de sincronização (`last_sync_*`)
 para essa fase; refaça a mesma janela na próxima passada. Avançar sobre
 uma falha parcial abre um buraco permanente no acervo.
+
+---
+
+## Diagnóstico ao vivo
+
+```bash
+python -m motor_pncp <ibge> [--dias N] [--itens N] [--silencioso]
+```
+
+Roda cada fase do motor contra o PNCP **real**, num município, numa
+janela curta (default 90 dias), e imprime o que respondeu e o que não,
+com tempo por fase. Não grava nada. Sai com código 1 se alguma fase
+falhou — dá pra usar em script.
+
+Existe pra uma pergunta só, a que toda sessão de integração vai fazer:
+**"o motor quebrou ou o portal caiu?"** Os testes com mock provam a
+lógica; só uma chamada real prova que o envelope ainda se chama
+`totalPaginas`, que o endpoint de itens ainda devolve array puro, que
+204 ainda vem como 204.
+
+O resumo separa por host, porque eles caem independentemente:
+
+| Host | Fases | Observado em 2026-09-06 |
+|---|---|---|
+| `api/consulta` | `contar_contratacoes`, `contratacoes`, `contratos`, `atas`, `pca` | 5/5 ok |
+| `api/pncp` | `consultar_orgao`, `itens_e_resultados` (itens, resultados, termos) | 0/2 — HTTP 503 sustentado há >24h |
+| Banco Central | `ipca` | ok |
+
+Leitura desse resultado: motor íntegro, portal parcialmente fora. Sem
+código de retry/timeout que extraia dado de um endpoint que não
+responde — parar e esperar. `--silencioso` desliga o beacon de progresso
+(stderr) quando só o resumo interessa.

@@ -2,6 +2,24 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
+## [0.4.0] — 2026-09-06
+
+### Added
+- `python -m motor_pncp <ibge>`: diagnóstico ao vivo contra o PNCP real,
+  fase a fase, com resumo separado por host (`api/consulta` × `api/pncp`
+  caem independentemente). Responde "o motor quebrou ou o portal caiu?"
+  sem abrir código; código de saída 1 se alguma fase falhou.
+- Tag `v0.4.0` — primeira versão pinável. README passa a instruir
+  `pip install "git+...@v0.4.0"`, nunca `master`.
+
+### Verified
+- Primeira execução contra o portal real (Tanabi/SP, 60 dias):
+  `api/consulta` 5/5 (envelope `totalPaginas`, campos
+  `numeroControlePNCP`/`orgaoEntidade`/`esferaId` confirmados como o
+  motor espera); `api/pncp` 0/2 por HTTP 503 sustentado no portal (mesmo
+  estado registrado pela sessão do Pretiarium Free) — motor classificou
+  certo, sem tratar como bug próprio.
+
 ## [0.3.2] — 2026-09-06
 
 Portado do `relatorio_correcoes_motor_sync_pncp.md` (rodadas 4-5, sessão
