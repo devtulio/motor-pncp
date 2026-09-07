@@ -55,6 +55,9 @@ def main(argv=None):
     consulta, pncp = [], []  # sucesso/falha por host
 
     print("host api/consulta:")
+    _, s = _fase("sonda (/v1/atas, 1 tentativa)", motor.sonda,
+                 mostrar=lambda t: f"respondeu em {t:.1f}s")
+    consulta.append(s)
     contagem, s = _fase(
         "contar_contratacoes", lambda: motor.contar_contratacoes(args.ibge, inicio, fim))
     consulta.append(s)

@@ -179,6 +179,32 @@ def test_contar_contratacoes_404_persistente_marca_parcial(monkeypatch):
     assert resultado["total"] == 0
 
 
+# ── sonda() ──────────────────────────────────────────────────────────────
+
+def test_sonda_uma_tentativa_em_atas_e_devolve_tempo(monkeypatch):
+    visto = {}
+
+    def get_fake(self, url_base, caminho, params, **kw):
+        visto.update(caminho=caminho, params=params, kw=kw)
+        return {"data": [], "paginasRestantes": 0}
+
+    monkeypatch.setattr(Cliente, "get", get_fake)
+    t = Motor().sonda()
+    assert t >= 0
+    assert visto["caminho"] == "/v1/atas"
+    assert visto["kw"]["tentativas"] == 1  # sonda não paga escada de retry
+    assert visto["params"]["tamanhoPagina"] == 10
+
+
+def test_sonda_propaga_pncperro(monkeypatch):
+    def get_fake(self, *a, **k):
+        raise PncpErro("HTTP 503")
+
+    monkeypatch.setattr(Cliente, "get", get_fake)
+    with pytest.raises(PncpErro):
+        Motor().sonda()
+
+
 # ── ipca() ───────────────────────────────────────────────────────────────
 
 def test_ipca_usa_o_cliente_e_gera_competencias(monkeypatch):

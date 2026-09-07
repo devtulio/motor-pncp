@@ -74,7 +74,7 @@ Instalação em cada sistema consumidor — **pinada numa tag**, nunca em
 sistema sem você pedir):
 
 ```bash
-pip install "git+https://github.com/devtulio/motor-pncp.git@v0.4.1"
+pip install "git+https://github.com/devtulio/motor-pncp.git@v0.4.2"
 ```
 
 Em modo editável durante o desenvolvimento do próprio motor:
@@ -94,7 +94,7 @@ Roda cada fase contra o PNCP real num município e separa por host
 "o motor quebrou ou o portal caiu?" sem abrir código. Não grava nada.
 Sai com código 1 se alguma fase falhou. Ver [MANUAL.md](MANUAL.md#diagnóstico-ao-vivo).
 
-Testes: `pip install -e ".[dev]" && pytest` (79 testes, focados na lógica
+Testes: `pip install -e ".[dev]" && pytest` (85 testes, focados na lógica
 de resiliência — disjuntor, paralelismo/tentativas adaptativos, dedup de
 avisos, classificação de erro HTTP, e o vazamento de thread do achado 8).
 `ruff check src tests` e `bandit -q -c pyproject.toml -r src` rodam no CI

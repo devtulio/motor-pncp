@@ -182,6 +182,40 @@ def test_paginar_pagina_1_vazia_e_legitima(urlopen_fake):
     assert list(cliente().paginar("https://x", "/y", {}, 50)) == []
 
 
+def test_paginar_prefere_paginasRestantes(urlopen_fake):
+    """Campo canônico da spec pra decidir se continua; totalPaginas é
+    reserva. Aqui os dois discordam de propósito — vence paginasRestantes."""
+    urlopen_fake.append(resposta_json(
+        {"data": [1], "paginasRestantes": 1, "totalPaginas": 1}))
+    urlopen_fake.append(resposta_json(
+        {"data": [2], "paginasRestantes": 0, "totalPaginas": 1}))
+    assert list(cliente().paginar("https://x", "/y", {}, 50)) == [1, 2]
+
+
+def test_paginar_cai_para_totalPaginas_sem_paginasRestantes(urlopen_fake):
+    urlopen_fake.append(resposta_json({"data": [1], "totalPaginas": 2}))
+    urlopen_fake.append(resposta_json({"data": [2], "totalPaginas": 2}))
+    assert list(cliente().paginar("https://x", "/y", {}, 50)) == [1, 2]
+
+
+def test_paginar_sem_nenhum_campo_de_paginacao_falha_alto(urlopen_fake):
+    """Assumir "só esta página" truncaria em silêncio — mesma perda que a
+    guarda de página vazia evita, por outra porta."""
+    urlopen_fake.append(resposta_json({"data": [1]}))
+    with pytest.raises(PncpErro, match="sem paginasRestantes/totalPaginas"):
+        list(cliente().paginar("https://x", "/y", {}, 50))
+
+
+def test_422_retenta_no_maximo_duas_vezes(urlopen_fake):
+    """A spec classifica 422 como erro do cliente; o incidente real era um
+    422 espúrio sob carga. Duas tentativas cobrem o espúrio; um 422
+    legítimo falha rápido em vez de pagar a escada inteira."""
+    urlopen_fake.extend([erro_http(422)] * 5)
+    with pytest.raises(PncpErro, match="HTTP 422"):
+        cliente().get("https://x", "/y", {}, tentativas=5)
+    assert len(urlopen_fake) == 3  # consumiu 2 das 5, não 5
+
+
 def test_beacon_agrupa_a_mesma_falha_entre_requisicoes_diferentes(urlopen_fake):
     """O storm real que motivou isso: centenas de contratações DIFERENTES
     batendo 503 — não é retry de uma só requisição, é a mesma causa se

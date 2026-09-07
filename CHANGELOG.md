@@ -2,6 +2,33 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
+## [0.4.2] — 2026-09-07
+
+Resultado de comparar o motor com o que o monitor independente
+`statuslicitacoes.com.br/api-pncp` documenta sobre a API de consulta.
+Limites (tamanho de página por endpoint, formato de data, `pagina`
+obrigatório, PCA com `dataInicio`/`dataFim`, 204 sem corpo, 400 sem
+retry) já estavam corretos. Três ajustes:
+
+### Fixed
+- `Cliente.paginar` decidia "acabou" por `totalPaginas` com default 1 —
+  envelope sem esse campo truncava na página 1 em silêncio. Agora prefere
+  `paginasRestantes` (o campo que a spec indica), cai pra `totalPaginas`,
+  e sem nenhum dos dois num envelope com dados levanta `PncpErro`.
+
+### Changed
+- HTTP 422 retenta no máximo 2 vezes (era a escada inteira). A spec o
+  classifica como erro do cliente; o incidente real que o pôs entre os
+  transitórios foi um 422 espúrio sob carga — duas tentativas cobrem
+  isso, e um 422 legítimo (parâmetro errado) falha em segundos com o
+  motivo do corpo na mensagem.
+
+### Added
+- `Motor.sonda()`: uma requisição barata em `/v1/atas` (o endpoint que o
+  monitor usa como health-check), uma tentativa, devolve o tempo de
+  resposta — pra decidir em 1s se vale iniciar uma coleta. O diagnóstico
+  `python -m motor_pncp` passa a começar por ela.
+
 ## [0.4.1] — 2026-09-06
 
 Repositório passou a ser **público** (pra CI dos sistemas consumidores

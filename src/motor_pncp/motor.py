@@ -11,6 +11,7 @@ explícito o que já era verdade.
 Ver README.md para o porquê de cada limiar de resiliência (em `Config`).
 """
 import concurrent.futures
+import time
 from datetime import date
 
 from ._http import USER_AGENT_PADRAO, Cliente
@@ -69,6 +70,27 @@ class Motor:
                                 user_agent=user_agent, progresso=progresso)
         self._base = base
         self._base_pncp = base_pncp
+
+    # ── sonda ────────────────────────────────────────────────────────────
+
+    def sonda(self):
+        """Uma requisição barata pra saber se `api/consulta` responde.
+
+        Bate em `/v1/atas` (vigência de hoje, 10 registros) — o endpoint
+        que o monitor independente do PNCP usa como health-check por ser
+        o mais rápido — com UMA tentativa, sem escada de retry. Devolve o
+        tempo de resposta em segundos; levanta `PncpErro` se não
+        respondeu. Serve pra decidir em 1s se vale iniciar uma coleta ou
+        se é melhor esperar o portal — não diz nada sobre `api/pncp`
+        (itens/resultados), que cai separado.
+        """
+        hoje = amd(date.today())
+        inicio = time.monotonic()
+        self._cliente.get(self._base, "/v1/atas",
+                          {"dataInicial": hoje, "dataFinal": hoje,
+                           "pagina": 1, "tamanhoPagina": 10},
+                          tentativas=1, modo_404="retry")
+        return time.monotonic() - inicio
 
     # ── infraestrutura comum das fases baixadas em paralelo com disjuntor ─
 

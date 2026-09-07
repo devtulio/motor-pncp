@@ -30,6 +30,12 @@ USER_AGENT_PADRAO = "motor-pncp/0.1 (coleta de contratacoes; open-source)"
 # que morreria de qualquer forma, contra confundir portal instável com
 # parâmetro errado.
 HTTP_TRANSITORIOS = (422, 500, 502, 503, 504)
+# 422 retenta, mas pouco: a spec o classifica como erro do cliente (sem
+# retry), e o incidente real que o pôs na lista acima foi um 422 espúrio
+# sob carga. Duas tentativas cobrem o espúrio; um 422 legítimo (parâmetro
+# errado — bug de desenvolvimento) falha em segundos, com o motivo do corpo
+# na mensagem, em vez de pagar a escada inteira (~5min) pra descobrir.
+TENTATIVAS_422 = 2
 _LIMITE_MOTIVO = 200
 
 
@@ -174,7 +180,8 @@ class Cliente:
                     time.sleep(int(retry_after) if (retry_after or "").isdigit()
                                else 5 * (tentativa + 1))
                     continue
-                if e.code in HTTP_TRANSITORIOS and tentativa < tentativas - 1:
+                teto = min(tentativas, TENTATIVAS_422) if e.code == 422 else tentativas
+                if e.code in HTTP_TRANSITORIOS and tentativa < teto - 1:
                     # portal sobrecarregado conta como bloqueio: o
                     # paralelismo cai sozinho na próxima leva, em vez de
                     # insistir com várias conexões contra quem já está
@@ -250,7 +257,21 @@ class Cliente:
                         f"{pagina} veio vazia mas havia mais anunciadas")
                 return
             yield from dados["data"]
-            if pagina >= dados.get("totalPaginas", 1):
+            # `paginasRestantes` é o campo que a spec indica pra decidir se
+            # continua; `totalPaginas` é o reserva. Sem NENHUM dos dois num
+            # envelope com dados, assumir "só esta página" seria truncar em
+            # silêncio — a mesma perda que a guarda acima evita, por outra
+            # porta. Falhar alto e deixar a janela pendente.
+            restantes = dados.get("paginasRestantes")
+            if restantes is None:
+                total = dados.get("totalPaginas")
+                if total is None:
+                    raise PncpErro(
+                        f"envelope sem paginasRestantes/totalPaginas em "
+                        f"{caminho} (página {pagina}) — não dá pra saber se "
+                        "acabou; não gravar a janela como completa")
+                restantes = total - pagina
+            if restantes <= 0:
                 return
             pagina += 1
 

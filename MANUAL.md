@@ -43,6 +43,15 @@ antes disso quem consome já processou**; não avance sua marca d'água de
 sincronização se isso acontecer (falha ≠ ausência). Se o disjuntor
 decidir que a fase morreu, as consultas restantes nem são tentadas.
 
+### `sonda() -> float`
+
+Uma requisição barata em `/v1/atas` (vigência de hoje, 10 registros, o
+endpoint que o monitor independente do PNCP usa como health-check), com
+**uma** tentativa — sem escada de retry. Devolve o tempo de resposta em
+segundos; levanta `PncpErro` se `api/consulta` não respondeu. Serve pra
+decidir em 1s se vale iniciar uma coleta ou esperar o portal. Não diz
+nada sobre `api/pncp` (itens/resultados), que cai separado.
+
 ### `contar_contratacoes(codigo_ibge, inicio=DATA_INICIO_PNCP, fim=None) -> dict`
 
 Quantas contratações um município tem, sem baixar nenhuma — lê

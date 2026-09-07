@@ -18,6 +18,9 @@ class MotorFake:
     def __init__(self, *, progresso=None, pncp_fora=False):
         self.pncp_fora = pncp_fora
 
+    def sonda(self):
+        return 0.01
+
     def contar_contratacoes(self, ibge, inicio, fim):
         return {"total": 1, "parcial": False}
 
@@ -51,7 +54,7 @@ def test_codigo_de_saida_reflete_falha_por_host(monkeypatch, capsys, pncp_fora, 
                         lambda **kw: MotorFake(pncp_fora=pncp_fora, **kw))
     assert cli.main(["3553401", "--dias", "30", "--silencioso"]) == esperado
     saida = capsys.readouterr().out
-    assert "api/consulta: 5/5 ok" in saida
+    assert "api/consulta: 6/6 ok" in saida
     assert ("api/pncp: 0/2 ok" in saida) is pncp_fora
     assert ("0 de 1 concluída" in saida) is pncp_fora
 
