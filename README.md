@@ -22,7 +22,9 @@ storage próprio); o motor só torna explícito o que já era verdade.
 Cobertura atual: contratações (`contratacoes`), itens e resultados
 homologados (`itens_e_resultados`), contratos/atas/PCA de um órgão
 (`contratos`/`atas`/`pca`), termos aditivos (`termos_aditivos`), consulta
-de órgão (`consultar_orgao`) e IPCA (`ipca`).
+de órgão (`consultar_orgao`), IPCA (`ipca`) e um health-check barato do
+portal (`sonda`, 1 requisição, 1 tentativa — pra decidir em segundos se
+vale iniciar uma coleta).
 
 ## Uso
 
