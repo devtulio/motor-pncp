@@ -305,13 +305,20 @@ lógica; só uma chamada real prova que o envelope ainda se chama
 
 O resumo separa por host, porque eles caem independentemente:
 
-| Host | Fases | Observado em 2026-09-06 |
-|---|---|---|
-| `api/consulta` | `contar_contratacoes`, `contratacoes`, `contratos`, `atas`, `pca` | 5/5 ok |
-| `api/pncp` | `consultar_orgao`, `itens_e_resultados` (itens, resultados, termos) | 0/2 — HTTP 503 sustentado há >24h |
-| Banco Central | `ipca` | ok |
+| Host | Fases | 2026-09-06 | 2026-09-07 |
+|---|---|---|---|
+| `api/consulta` | `sonda`, `contar_contratacoes`, `contratacoes`, `contratos`, `atas`, `pca` | 5/5 ok | 6/6 ok — 649 contratações em várias páginas, `contar` = baixadas |
+| `api/pncp` | `consultar_orgao`, `itens_e_resultados` (itens, resultados, termos) | 0/2 — HTTP 503 sustentado há >24h | 2/2 ok |
+| Banco Central | `ipca` | ok | ok |
 
-Leitura desse resultado: motor íntegro, portal parcialmente fora. Sem
-código de retry/timeout que extraia dado de um endpoint que não
-responde — parar e esperar. `--silencioso` desliga o beacon de progresso
-(stderr) quando só o resumo interessa.
+Leitura do dia 06: motor íntegro, portal parcialmente fora — sem código
+de retry/timeout que extraia dado de um endpoint que não responde;
+parar e esperar. Leitura do dia 07: portal de pé, todas as fases
+validadas contra resposta real (envelope traz `paginasRestantes`,
+`totalPaginas`, `totalRegistros`, `numeroPagina`, `empty`). `--silencioso`
+desliga o beacon de progresso (stderr) quando só o resumo interessa.
+
+Rodando de dentro do repositório do motor, use `PYTHONPATH=src` — uma
+cópia do pacote instalada por tag no site-packages ganha do `src/` na
+resolução de import, e o diagnóstico rodaria a versão errada sem avisar
+(o cabeçalho mostra a versão; confira).
