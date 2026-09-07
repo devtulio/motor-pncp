@@ -2,22 +2,19 @@
 
 [![CI](https://github.com/devtulio/motor-pncp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/motor-pncp/actions/workflows/ci.yml)
 
-Pacote `motor_pncp` (`src/`) — motor de coleta do PNCP, extraído do
-`pncp.py` do Pretiarium Free (2026-09-05, depois de 3 rodadas de auditoria
-sobre travamentos reais) para ser usado por qualquer sistema, sem cópia.
-Auditado contra as variantes de origem (Licitarium Free, Pretiarium Free e
-um sistema irmão) — ver [CHANGELOG.md](CHANGELOG.md).
+Pacote `motor_pncp` (`src/`) — motor de coleta do PNCP (Portal Nacional de
+Contratações Públicas) pra ser usado por qualquer sistema. Só stdlib.
 
-Referência completa da API: [MANUAL.md](MANUAL.md).
+Referência completa da API: [MANUAL.md](MANUAL.md). Histórico:
+[CHANGELOG.md](CHANGELOG.md).
 
 **Fronteira:** o motor faz HTTP resiliente contra o portal (retry com
 backoff, paralelismo e nº de tentativas que recuam sozinhos sob storm,
 disjuntor por tempo sem sucesso) e devolve **registros tipados** que
 embrulham o JSON cru do PNCP (`.raw` continua sendo a fonte da verdade —
 ver `tipos.py`). Não conhece banco de dados, schema ou upsert — isso é
-decisão de quem consome. Essa fronteira já existia de fato entre os 3
-sistemas que originaram este código (um grava SQLite direto, outro tem
-storage próprio); o motor só torna explícito o que já era verdade.
+decisão de quem consome; sistemas diferentes persistem de jeitos
+diferentes, e o motor não escolhe por eles.
 
 Cobertura atual: contratações (`contratacoes`), itens e resultados
 homologados (`itens_e_resultados`), contratos/atas/PCA de um órgão
@@ -76,7 +73,7 @@ Instalação em cada sistema consumidor — **pinada numa tag**, nunca em
 sistema sem você pedir):
 
 ```bash
-pip install "git+https://github.com/devtulio/motor-pncp.git@v0.4.2"
+pip install "git+https://github.com/devtulio/motor-pncp.git@v0.4.3"
 ```
 
 Em modo editável durante o desenvolvimento do próprio motor:
@@ -98,57 +95,29 @@ Sai com código 1 se alguma fase falhou. Ver [MANUAL.md](MANUAL.md#diagnóstico-
 
 Testes: `pip install -e ".[dev]" && pytest` (85 testes, focados na lógica
 de resiliência — disjuntor, paralelismo/tentativas adaptativos, dedup de
-avisos, classificação de erro HTTP, e o vazamento de thread do achado 8).
+avisos, classificação de erro HTTP, limpeza de thread ao parar cedo).
 `ruff check src tests` e `bandit -q -c pyproject.toml -r src` rodam no CI
 a cada push/PR (Python 3.10 e 3.12).
 
-## Lições de coleta e interpretação de dados públicos
+## Princípios que o código segue
 
-Extraídas das notas de trabalho dos sistemas de origem.
+Cada um destes virou uma decisão concreta no motor; quem consome herda.
 
-Origem: pesquisas com PNCP, Compras.gov, Siconfi e portais de transparência
-(2026). Cada arquivo mantém o formato de memória: fato, **Why** e
-**How to apply**. As lições de "Mecânica da coleta" abaixo são exatamente o
-que o `motor_pncp` implementa em código.
-
-## Mecânica da coleta
-
-Como falar com uma API pública sem inventar resultado.
-
-| Arquivo | Lição |
-|---|---|
-| `feedback_api_publica_falha_vs_ausencia.md` | 429 e 500 não são "não existe". Nunca cachear falha como ausência; e conferir se o filtro que você passou é de fato aplicado. |
-| `feedback_contar_sem_paginar.md` | Volume de API paginada se lê no envelope (`totalRegistros`), nunca baixando tudo. |
-| `feedback_medicao_de_api_expira.md` | Número medido de serviço de terceiro tem validade. Remedir antes de usar como premissa. |
-| `feedback_watcher_sem_saida.md` | Monitor em background precisa de segunda condição de saída: processo morto ou teto de tempo. |
-| `feedback_auditoria_estatica_nao_ve_a_fronteira.md` | Ler o código não basta. Rodar contra a API e os arquivos reais é segunda passada obrigatória. |
-
-## Semântica do dado
-
-O campo vem bem-formado e significa outra coisa. Todo erro caro desta família
-tem essa assinatura.
-
-| Arquivo | Lição |
-|---|---|
-| `feedback_agregar_por_cnpj_sem_unidade.md` | Somar por CNPJ de órgão sem olhar a unidade: há unidade de terceiro pendurada no CNPJ de outro ente. |
-| `feedback_cruzar_dentro_do_orgao.md` | Prefeitura e Câmara são CNPJs distintos. Não cruzar plano de uma com execução de outra. |
-| `feedback_modalidade_nao_e_amparo.md` | Classificar pelo dispositivo legal invocado, nunca pelo rótulo da modalidade. |
-| `feedback_ni_fornecedor_cnpj_ou_cpf.md` | O mesmo campo carrega CNPJ ou CPF. Decidir pelo número de dígitos, contando antes de formatar. |
-| `feedback_denominador_populacao_residente.md` | Escolha de denominador muda o resultado. Perguntar antes de tratar outlier como achado. |
-
-## Classificação automática
-
-| Arquivo | Lição |
-|---|---|
-| `feedback_regra_automatica_acusa_pelo_nome.md` | Classificador por texto produz falso positivo antes de produzir achado. Imprimir os valores que a regra casou e ler, antes de o número existir. |
-
-## Fontes
-
-| Arquivo | Lição |
-|---|---|
-| `reference_api_dadosabertos_comprasgov.md` | Cobertura parcial; não substitui o PNCP. |
-
-## Não copiado
-
-`project_pncp_piloto.md` — memória de projeto ativo, não lição de motor. Continua
-na memória de trabalho.
+- **Falha ≠ ausência.** 429, 5xx, timeout, resposta ilegível ou página
+  vazia no meio de uma listagem nunca viram "não existe" — viram retry
+  e, esgotado, `PncpErro`. Quem persiste não avança marca d'água sobre
+  uma falha parcial.
+- **Contar sem paginar.** Volume de uma consulta se lê no envelope
+  (`totalRegistros`), nunca baixando tudo (`contar_contratacoes`).
+- **Desistir por tempo, não por contagem.** Numa fila de milhares, falhas
+  seguidas são ruído normal; o disjuntor exige falhas seguidas **e** tempo
+  sem sucesso — com um teto absoluto pra quando a falha fica barata.
+- **Recuar por proporção.** Paralelismo e nº de tentativas caem pela
+  fração de respostas ruins na janela recente, não por contagem
+  absoluta, e voltam sozinhos.
+- **Nunca ficar mudo.** Toda espera de retry avisa (`progresso`), com
+  avisos da mesma causa agrupados por janela pra não inundar.
+- **Parar cedo de verdade.** Gerador fechado no meio não espera as
+  requisições já enfileiradas pagarem o orçamento inteiro de retry.
+- **Mock não prova fronteira.** Toda mudança de comportamento é validada
+  contra o portal real (`python -m motor_pncp`) antes de virar tag.

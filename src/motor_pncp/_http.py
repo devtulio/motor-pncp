@@ -240,8 +240,8 @@ class Cliente:
         2+ vazia depois de uma página anterior que anunciou mais
         `totalPaginas` **não é** — é o portal engasgado no meio da
         listagem. Devolver o que já veio até ali gravaria a janela como
-        completa e a marca d'água engoliria o resto pra sempre (achado
-        real de um sistema irmão, 2026-08-29); por isso levanta `PncpErro`
+        completa e a marca d'água engoliria o resto pra sempre (incidente
+        real em produção); por isso levanta `PncpErro`
         em vez de simplesmente parar.
         """
         pagina = 1

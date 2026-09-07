@@ -148,7 +148,7 @@ def test_pca_nao_consulta_nada_se_janela_inteira_e_anterior_ao_minimo(monkeypatc
 # ── itens_da_compra() ────────────────────────────────────────────────────
 
 def test_itens_da_compra_pagina_vazia_apos_pagina_cheia_vira_pncperro(monkeypatch):
-    """Mesmo achado do sistema irmão (2026-08-29) aplicado ao paginador
+    """Mesmo incidente aplicado ao paginador
     de itens, que não usa o envelope totalPaginas — o único sinal de
     página cheia é vir com exatamente 100 registros."""
     pagina_cheia = [{"numeroItem": i} for i in range(100)]

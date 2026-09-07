@@ -47,7 +47,7 @@ def test_disjuntor_sucesso_intercalado_reseta_o_relogio(monkeypatch):
 
 
 def test_disjuntor_teto_absoluto_corta_mesmo_com_falha_rapida(monkeypatch):
-    """Achado 11 (Pretiarium Free, 2026-09-06): com a escada curta, cada
+    """Incidente real: com a escada curta, cada
     falha custa segundos, e só o relógio de sem_sucesso_limite deixava o
     disjuntor mastigar 139-196 itens antes de desistir. O teto de
     contagem corta bem antes do relógio fechar."""

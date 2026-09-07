@@ -3,7 +3,7 @@ from motor_pncp.tipos import Contratacao, Orgao
 
 def test_orgao_esfera_le_o_campo_real_da_api():
     """esferaId (M/E/F/N) é o campo de verdade — poderId nunca apareceu em
-    nenhum dos 3 sistemas de origem; não inventar chave sem uso real."""
+    nenhum consumidor; não inventar chave sem uso real."""
     assert Orgao({"esferaId": "M"}).esfera == "M"
     assert Orgao({}).esfera is None
 

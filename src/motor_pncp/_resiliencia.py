@@ -132,9 +132,8 @@ class Dedup:
     Sem isso, um storm de centenas de falhas idênticas em requisições
     DIFERENTES (não é retry de uma só — é a mesma causa, ex. HTTP 503,
     aparecendo em milhares de contratações) produz uma linha idêntica por
-    ocorrência no callback de progresso. Portado de um padrão da família
-    de sistemas (`sgx_base.registrar_operacional`) que resolveu o mesmo
-    problema do lado de um log Python.
+    ocorrência no callback de progresso — o mesmo problema que um logger
+    resolve com supressão por janela.
 
     Uma instância por `Motor` — não estado de módulo, mesmo motivo do
     `Adaptativo`/`Disjuntor`.

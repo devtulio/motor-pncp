@@ -166,7 +166,7 @@ def test_beacon_quebrado_nao_derruba_o_retry(urlopen_fake):
 
 
 def test_paginar_pagina_vazia_apos_pagina_cheia_vira_pncperro(urlopen_fake):
-    """Achado real (sistema irmão, 2026-08-29): página 2 vazia depois de
+    """Incidente real: página 2 vazia depois de
     uma página 1 que anunciou mais totalPaginas é o portal engasgado no
     meio da listagem, não "acabou" — devolver o que veio até ali gravaria
     a janela como completa e perderia o resto pra sempre."""

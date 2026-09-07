@@ -4,9 +4,8 @@ Fronteira deliberada: o motor faz HTTP + resiliência contra o portal e
 devolve registros tipados que embrulham o JSON cru do PNCP (`.raw`
 continua sendo a fonte da verdade — ver `tipos.py`). Quem persiste decide
 schema, upsert e o que já tem gravado; o motor não conhece banco nenhum.
-Essa fronteira já existia de fato entre os sistemas que o originaram (um
-grava SQLite direto, outro tem storage próprio); o motor só torna
-explícito o que já era verdade.
+Sistemas diferentes persistem de jeitos diferentes (um grava SQLite
+direto, outro tem storage próprio); o motor não escolhe por eles.
 
 Ver README.md para o porquê de cada limiar de resiliência (em `Config`).
 """
@@ -263,7 +262,7 @@ class Motor:
         Levanta `ItensIndisponiveis` em 404 — não confundir com "esta
         contratação não tem item nenhum" (ver a exceção). Página 1 vazia
         é legítima; página 2+ vazia depois de uma página cheia não é —
-        mesmo raciocínio (e mesmo incidente real, 2026-08-29) do guard em
+        mesmo raciocínio (e mesmo incidente real) do guard em
         `Cliente.paginar`: sem ele, um soluço do portal no meio da
         listagem terminava a coleta calada, a contratação era carimbada
         como concluída, e os itens que faltaram ficavam faltando pra

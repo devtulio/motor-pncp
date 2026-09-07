@@ -217,12 +217,12 @@ Todo método devolve dados — nenhum grava em lugar nenhum. `schema`,
 De propósito, não existe um `Motor.sincronizar_tudo()`: decidir **qual**
 fase roda, a janela incremental (`last_sync_contratacoes`, etc.), o
 throttle contra rodar de novo cedo demais e o VACUUM do banco dependem
-de estado que só o seu sistema tem (config/log próprios) — e os 3
-sistemas de origem já orquestram de formas incompatíveis entre si (o
-um sistema multi-tenant roda a fase de itens GLOBAL, sem o conceito
-de "município de referência" dos sistemas Free). Cada sistema mantém o
-próprio `sincronizar_tudo`, chamando os métodos do `Motor` no lugar do
-`pncp.py` antigo.
+de estado que só o seu sistema tem (config/log próprios) — e sistemas
+consumidores orquestram de formas incompatíveis entre si (um app
+multi-tenant roda a fase de itens GLOBAL, uma passada por ciclo; um app
+por município roda por cidade, com "municípios de referência"). Cada
+sistema mantém o próprio `sincronizar_tudo`, chamando os métodos do
+`Motor`.
 
 ### Índice em `municipio_ibge` (do seu schema, não do motor)
 
@@ -230,7 +230,7 @@ Todo registro que o motor devolve carrega o município (você passa o
 `codigo_ibge`; guarde-o na linha). Toda consulta sua por município —
 inclusive a listagem de referência que uma tela costuma fazer no boot —
 varre a tabela inteira sem índice nessa coluna. Medido num acervo real
-(Pretiarium Free, 2026-09-06): **22,7s → 0,4s** só criando o índice em
+(acervo real): **22,7s → 0,4s** só criando o índice em
 `itens` e `contratacoes`, zero mudança de query. Escala mal exatamente
 com o que cresce (mais municípios de referência = pior).
 
