@@ -1,6 +1,6 @@
 # Motor de Coleta
 
-[![CI](https://github.com/devtulio/motor-pncp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/motor-pncp/actions/workflows/ci.yml)
+[![CI](https://github.com/devtulio/motor-pncp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/motor-pncp/actions/workflows/ci.yml) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20stdlib-orange) ![Fonte](https://img.shields.io/badge/fonte-PNCP-informational)
 
 Pacote `motor_pncp` (`src/`) — motor de coleta do PNCP (Portal Nacional de
 Contratações Públicas) pra ser usado por qualquer sistema. Só stdlib.
@@ -73,7 +73,7 @@ Instalação em cada sistema consumidor — **pinada numa tag**, nunca em
 sistema sem você pedir):
 
 ```bash
-pip install "git+https://github.com/devtulio/motor-pncp.git@v0.4.3"
+pip install "git+https://github.com/devtulio/motor-pncp.git@v0.4.4"
 ```
 
 Em modo editável durante o desenvolvimento do próprio motor:
@@ -121,3 +121,7 @@ Cada um destes virou uma decisão concreta no motor; quem consome herda.
   requisições já enfileiradas pagarem o orçamento inteiro de retry.
 - **Mock não prova fronteira.** Toda mudança de comportamento é validada
   contra o portal real (`python -m motor_pncp`) antes de virar tag.
+
+## Licença
+
+[MIT](LICENSE) — © 2026 Túlio Ribeiro de Moura e Silva.

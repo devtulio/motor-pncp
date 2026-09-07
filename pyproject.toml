@@ -4,8 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "motor-pncp"
-version = "0.4.3"
+version = "0.4.4"
 description = "Motor de coleta do PNCP: HTTP resiliente contra o portal, sem opinião sobre persistência."
+license = {file = "LICENSE"}
+authors = [{name = "Túlio Ribeiro de Moura e Silva"}]
 requires-python = ">=3.10"
 dependencies = []
 

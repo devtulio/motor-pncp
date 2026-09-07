@@ -2,6 +2,14 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
+## [0.4.4] — 2026-09-08
+
+Sem mudança de código.
+
+### Added
+- Licença MIT (`LICENSE`), © 2026 Túlio Ribeiro de Moura e Silva —
+  declarada também em `pyproject.toml` e no README.
+
 ## [0.4.3] — 2026-09-08
 
 Sem mudança de código.
