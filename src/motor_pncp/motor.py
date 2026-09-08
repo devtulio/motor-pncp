@@ -268,13 +268,17 @@ class Motor:
         página vir com MENOS de `tamanhoPagina`).
 
         Levanta `ItensIndisponiveis` em 404 — não confundir com "esta
-        contratação não tem item nenhum" (ver a exceção). Página 1 vazia
-        é legítima; página 2+ vazia depois de uma página cheia não é —
-        mesmo raciocínio (e mesmo incidente real) do guard em
-        `Cliente.paginar`: sem ele, um soluço do portal no meio da
-        listagem terminava a coleta calada, a contratação era carimbada
-        como concluída, e os itens que faltaram ficavam faltando pra
-        sempre.
+        contratação não tem item nenhum" (ver a exceção).
+
+        Página vazia é fim, em qualquer posição — inclusive depois de uma
+        página cheia. Não dá pra ter aqui o guard de `Cliente.paginar`
+        ("página 2+ vazia = portal engasgado"): sem envelope, uma página
+        cheia obriga a pedir a próxima, e numa contratação com múltiplo
+        exato de 100 itens a próxima vem legitimamente `[]` (verificado
+        contra o portal: além do fim é 200 com array vazio, não 404).
+        Um guard ali condenava essas contratações a falhar pra sempre —
+        achado de teste de propriedade, não de incidente. O soluço real
+        do portal chega como 5xx/timeout/HTML, que o retry cobre.
         """
         pagina = 1
         while True:
@@ -283,11 +287,6 @@ class Motor:
                 f"/v1/orgaos/{cnpj}/compras/{ano}/{sequencial}/itens",
                 {"pagina": pagina, "tamanhoPagina": 100}, modo_404="erro")
             if not lote:
-                if pagina > 1:
-                    raise PncpErro(
-                        f"paginação de itens interrompida em "
-                        f"{cnpj}/{ano}/{sequencial}: página {pagina} veio "
-                        "vazia depois de uma página cheia")
                 return
             for raw in lote:
                 yield Item(raw)

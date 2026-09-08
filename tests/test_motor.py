@@ -147,17 +147,17 @@ def test_pca_nao_consulta_nada_se_janela_inteira_e_anterior_ao_minimo(monkeypatc
 
 # ── itens_da_compra() ────────────────────────────────────────────────────
 
-def test_itens_da_compra_pagina_vazia_apos_pagina_cheia_vira_pncperro(monkeypatch):
-    """Mesmo incidente aplicado ao paginador
-    de itens, que não usa o envelope totalPaginas — o único sinal de
-    página cheia é vir com exatamente 100 registros."""
+def test_itens_da_compra_pagina_vazia_apos_pagina_cheia_e_fim(monkeypatch):
+    """Múltiplo exato de 100 itens: a página cheia obriga a pedir a
+    próxima, que vem `[]` legitimamente (portal verificado: além do fim é
+    200 com array vazio). A guarda antiga condenava essas contratações a
+    PncpErro pra sempre — achado de teste de propriedade."""
     pagina_cheia = [{"numeroItem": i} for i in range(100)]
     respostas = iter([pagina_cheia, []])
     monkeypatch.setattr(
         Cliente, "get",
         lambda self, *a, **k: next(respostas))
-    with pytest.raises(PncpErro, match="página 2 veio vazia"):
-        list(Motor().itens_da_compra("1", 2024, 1))
+    assert len(list(Motor().itens_da_compra("1", 2024, 1))) == 100
 
 
 def test_itens_da_compra_pagina_1_vazia_e_legitima(monkeypatch):

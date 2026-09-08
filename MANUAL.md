@@ -87,7 +87,7 @@ Registro do CNPJ no PNCP — `None` se o CNPJ não existe no portal.
 
 ### `itens_da_compra(cnpj, ano, sequencial) -> Iterator[Item]`
 
-Itens de uma contratação. Levanta `ItensIndisponiveis` em 404 — não é o
+Itens de uma contratação (página vazia = fim, em qualquer posição — além do fim o portal devolve `[]`). Levanta `ItensIndisponiveis` em 404 — não é o
 mesmo que "sem itens" (ver [Exceções](#exceções)).
 
 ### `resultado_do_item(cnpj, ano, sequencial, numero_item, pacing=True) -> Resultado | None`
