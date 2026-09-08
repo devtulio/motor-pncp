@@ -199,7 +199,12 @@ class Ata:
 
     @property
     def orgao_cnpj(self):
-        return (self.raw.get("orgaoEntidade") or {}).get("cnpj")
+        # o envelope real de /v1/atas/atualizacao traz `cnpjOrgao` plano,
+        # não `orgaoEntidade.cnpj` como contratações/contratos — lendo só o
+        # aninhado, esta property devolvia None em toda ata (pego pela
+        # fixture real; os dicts inventados dos testes nunca perceberiam)
+        return ((self.raw.get("orgaoEntidade") or {}).get("cnpj")
+                or self.raw.get("cnpjOrgao"))
 
     @property
     def vigencia_fim(self):

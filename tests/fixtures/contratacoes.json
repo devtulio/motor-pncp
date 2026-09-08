@@ -1,0 +1,122 @@
+{
+ "data": [
+  {
+   "srp": false,
+   "orgaoEntidade": {
+    "cnpj": "43052497000102",
+    "razaoSocial": "DEPARTAMENTO DE ESTRADAS DE RODAGEM",
+    "poderId": "E",
+    "esferaId": "E"
+   },
+   "anoCompra": 2026,
+   "sequencialCompra": 308,
+   "dataInclusao": "2026-05-27T07:18:44",
+   "dataPublicacaoPncp": "2026-05-27T07:18:44",
+   "dataAtualizacao": "2026-05-27T07:18:44",
+   "numeroCompra": "90006",
+   "unidadeOrgao": {
+    "ufNome": "São Paulo",
+    "codigoIbge": "3549805",
+    "codigoUnidade": "262211",
+    "nomeUnidade": "ESP - DR.09 - SAO JOSE DO RIO PRETO",
+    "ufSigla": "SP",
+    "municipioNome": "São José do Rio Preto"
+   },
+   "amparoLegal": {
+    "descricao": "pregão: modalidade de licitação obrigatória para aquisição de bens e serviços comuns",
+    "nome": "Lei 14.133/2021, Art. 28, I",
+    "codigo": 1
+   },
+   "dataAberturaProposta": "2026-05-28T08:00:00",
+   "dataEncerramentoProposta": "2026-06-15T08:30:00",
+   "informacaoComplementar": " Para as respostas de esclarecimentos e impugnações deste edital acesse o link: https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/landing?destino=quadro-informativo&compra=26221105900062026",
+   "processo": "13900118037202558",
+   "objetoCompra": "Contratação de empresa para Prestação de Serviços de manutenção de copa na área ocupada na Coordenadoria Geral Regional - CGR.9",
+   "linkSistemaOrigem": "https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/landing?destino=acompanhamento-compra&compra=26221105900062026",
+   "justificativaPresencial": null,
+   "unidadeSubRogada": null,
+   "orgaoSubRogado": null,
+   "valorTotalHomologado": 231000.0,
+   "numeroControlePNCP": "43052497000102-1-000308/2026",
+   "linkProcessoEletronico": null,
+   "modoDisputaId": 1,
+   "emendaParlamentar": null,
+   "dataAtualizacaoGlobal": "2026-07-01T07:58:39",
+   "modalidadeId": 6,
+   "valorTotalEstimado": 232009.5,
+   "modalidadeNome": "Pregão - Eletrônico",
+   "modoDisputaNome": "Aberto",
+   "tipoInstrumentoConvocatorioCodigo": 1,
+   "tipoInstrumentoConvocatorioNome": "Edital",
+   "fontesOrcamentarias": [],
+   "situacaoCompraId": 1,
+   "situacaoCompraNome": "Divulgada no PNCP",
+   "usuarioNome": "Compras.gov.br"
+  },
+  {
+   "srp": true,
+   "orgaoEntidade": {
+    "cnpj": "46588950000180",
+    "razaoSocial": "MUNICIPIO DE SAO JOSE DO RIO PRETO",
+    "poderId": "N",
+    "esferaId": "M"
+   },
+   "anoCompra": 2026,
+   "sequencialCompra": 487,
+   "dataInclusao": "2026-05-27T14:45:08",
+   "dataPublicacaoPncp": "2026-05-27T14:45:08",
+   "dataAtualizacao": "2026-05-27T14:45:09",
+   "numeroCompra": "11858",
+   "unidadeOrgao": {
+    "ufNome": "São Paulo",
+    "codigoIbge": "3549805",
+    "codigoUnidade": "1",
+    "nomeUnidade": "PREFEITURA MUNICIPAL DE SAO JOSE DO RIO PRETO",
+    "ufSigla": "SP",
+    "municipioNome": "São José do Rio Preto"
+   },
+   "amparoLegal": {
+    "descricao": "pregão: modalidade de licitação obrigatória para aquisição de bens e serviços comuns",
+    "nome": "Lei 14.133/2021, Art. 28, I",
+    "codigo": 1
+   },
+   "dataAberturaProposta": "2026-06-01T08:30:00",
+   "dataEncerramentoProposta": "2026-06-15T08:30:00",
+   "informacaoComplementar": null,
+   "processo": "11858/2026",
+   "objetoCompra": "REGISTRO DE PREÇOS PARA AQUISIÇÃO DE GÊNEROS ALIMENTÍCIOS PERECÍVEIS (CARNE BOVINA ACÉM EM CUBOS CONGELADO IQF, CARNE BOVINA MÚSCULO EM CUBOS CONGELADO IQF E CARNE BOVINA MÚSCULO MOÍDO CONGELADO IQF)  PARA ATENDIMENTO DA ALIMENTAÇÃO ESCOLAR DA REDE MUNICIPAL DE ENSINO E OUTROS EQUIPAMENTOS PÚBLICOS. SECRETARIA MUNICIPAL DE AGRICULTURA E ABASTECIMENTO",
+   "linkSistemaOrigem": "https://compras.empro.com.br/",
+   "justificativaPresencial": null,
+   "unidadeSubRogada": null,
+   "orgaoSubRogado": null,
+   "valorTotalHomologado": 5401000.0,
+   "numeroControlePNCP": "46588950000180-1-000487/2026",
+   "linkProcessoEletronico": null,
+   "modoDisputaId": 1,
+   "emendaParlamentar": null,
+   "dataAtualizacaoGlobal": "2026-07-01T08:46:03",
+   "modalidadeId": 6,
+   "valorTotalEstimado": 6426010.0,
+   "modalidadeNome": "Pregão - Eletrônico",
+   "modoDisputaNome": "Aberto",
+   "tipoInstrumentoConvocatorioCodigo": 1,
+   "tipoInstrumentoConvocatorioNome": "Edital",
+   "fontesOrcamentarias": [
+    {
+     "codigo": 2,
+     "nome": "Municipal",
+     "descricao": "Recurso orçamentário municipal disponível e devidamente vinculado à despesa que será realizada.",
+     "dataInclusao": "2026-05-27T14:45:09"
+    }
+   ],
+   "situacaoCompraId": 1,
+   "situacaoCompraNome": "Divulgada no PNCP",
+   "usuarioNome": "EMPRO TECNOLOGIA E INFORMACAO"
+  }
+ ],
+ "totalRegistros": 337,
+ "totalPaginas": 34,
+ "numeroPagina": 1,
+ "paginasRestantes": 33,
+ "empty": false
+}

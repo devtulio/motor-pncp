@@ -1,0 +1,131 @@
+{
+ "data": [
+  {
+   "numeroControlePncpAta": null,
+   "codigoPaisFornecedor": null,
+   "numeroControlePncpCompra": "62577929000135-1-000002/2025",
+   "nomeRazaoSocialFornecedor": "MICROSENS S/A",
+   "anoContrato": 2026,
+   "tipoContrato": {
+    "id": 1,
+    "nome": "Contrato (termo inicial)"
+   },
+   "numeroContratoEmpenho": "22855",
+   "dataAssinatura": "2025-08-25",
+   "dataVigenciaInicio": "2025-08-26",
+   "dataVigenciaFim": "2026-08-26",
+   "niFornecedor": "78126950001550",
+   "tipoPessoa": "PJ",
+   "orgaoEntidade": {
+    "cnpj": "43052497000102",
+    "razaoSocial": "DEPARTAMENTO DE ESTRADAS DE RODAGEM",
+    "poderId": "E",
+    "esferaId": "E"
+   },
+   "categoriaProcesso": {
+    "id": 3,
+    "nome": "Informática (TIC)"
+   },
+   "dataPublicacaoPncp": "2026-07-01T16:52:39",
+   "dataAtualizacao": "2026-07-01T16:52:39",
+   "sequencialContrato": 68,
+   "unidadeOrgao": {
+    "ufNome": "São Paulo",
+    "codigoUnidade": "262201",
+    "nomeUnidade": "ESP - DEPTO. ESTRADAS DE RODAGEM-DER",
+    "ufSigla": "SP",
+    "municipioNome": "São Paulo",
+    "codigoIbge": "3550308"
+   },
+   "informacaoComplementar": "",
+   "processo": "139.00086699/2025-51",
+   "unidadeSubRogada": null,
+   "orgaoSubRogado": null,
+   "niFornecedorSubContratado": null,
+   "nomeFornecedorSubContratado": null,
+   "receita": false,
+   "numeroParcelas": 1,
+   "numeroRetificacao": 0,
+   "temRemanejamento": false,
+   "emendaParlamentar": null,
+   "frutoAdesao": false,
+   "tipoPessoaSubContratada": null,
+   "objetoContrato": "CONTRATAÇÃO DE AQUISIÇÃO DE EQUIPAMENTOS DE VIDEOCONFERÊNCIA (CÂMERAS, SISTEMAS DE ÁUDIO,MONITORES E ACESSÓRIOS), POR MEIO DE ADESÃO À ATA DE REGISTRO DE PREÇOS Nº 004/2025,",
+   "valorInicial": 374350.0,
+   "valorParcela": 374350.0,
+   "valorGlobal": 374350.0,
+   "valorAcumulado": null,
+   "dataAtualizacaoGlobal": "2026-07-01T16:52:39",
+   "identificadorCipi": null,
+   "urlCipi": null,
+   "numeroControlePNCP": "43052497000102-2-000068/2026",
+   "usuarioNome": "Contratos.gov.br"
+  },
+  {
+   "numeroControlePncpAta": null,
+   "codigoPaisFornecedor": null,
+   "numeroControlePncpCompra": "43052497000102-1-000085/2026",
+   "nomeRazaoSocialFornecedor": "CONSDON ENGENHARIA E COMERCIO LTDA",
+   "anoContrato": 2026,
+   "tipoContrato": {
+    "id": 1,
+    "nome": "Contrato (termo inicial)"
+   },
+   "numeroContratoEmpenho": "22964",
+   "dataAssinatura": "2026-06-19",
+   "dataVigenciaInicio": "2026-06-25",
+   "dataVigenciaFim": "2027-05-25",
+   "niFornecedor": "56037450000103",
+   "tipoPessoa": "PJ",
+   "orgaoEntidade": {
+    "cnpj": "43052497000102",
+    "razaoSocial": "DEPARTAMENTO DE ESTRADAS DE RODAGEM",
+    "poderId": "E",
+    "esferaId": "E"
+   },
+   "categoriaProcesso": {
+    "id": 7,
+    "nome": "Obras"
+   },
+   "dataPublicacaoPncp": "2026-07-02T17:00:22",
+   "dataAtualizacao": "2026-07-02T17:00:22",
+   "sequencialContrato": 69,
+   "unidadeOrgao": {
+    "ufNome": "São Paulo",
+    "codigoUnidade": "262201",
+    "nomeUnidade": "ESP - DEPTO. ESTRADAS DE RODAGEM-DER",
+    "ufSigla": "SP",
+    "municipioNome": "São Paulo",
+    "codigoIbge": "3550308"
+   },
+   "informacaoComplementar": "90.012/2026-CO",
+   "processo": "13900014359/2025-29",
+   "unidadeSubRogada": null,
+   "orgaoSubRogado": null,
+   "niFornecedorSubContratado": null,
+   "nomeFornecedorSubContratado": null,
+   "receita": false,
+   "numeroParcelas": 1,
+   "numeroRetificacao": 0,
+   "temRemanejamento": false,
+   "emendaParlamentar": null,
+   "frutoAdesao": false,
+   "tipoPessoaSubContratada": null,
+   "objetoContrato": "CONTRATAÇÃO DAS OBRAS DE RECUPERAÇÃO DE EROSÃO E IMPLANTAÇÃO DE DRENAGEM NO KM 580, DA SP 320, LOCALIZADO NO MUNICÍPIO DE JALES",
+   "valorInicial": 2818000.0,
+   "valorParcela": 2818000.0,
+   "valorGlobal": 2818000.0,
+   "valorAcumulado": null,
+   "dataAtualizacaoGlobal": "2026-07-02T17:00:22",
+   "identificadorCipi": null,
+   "urlCipi": null,
+   "numeroControlePNCP": "43052497000102-2-000069/2026",
+   "usuarioNome": "Contratos.gov.br"
+  }
+ ],
+ "totalRegistros": 52,
+ "totalPaginas": 6,
+ "numeroPagina": 1,
+ "paginasRestantes": 5,
+ "empty": false
+}

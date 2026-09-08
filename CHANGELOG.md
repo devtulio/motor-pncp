@@ -2,10 +2,7 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
-## [Não versionado]
-
-Vira 1.1.1 quando o portal permitir o smoke real e a gravação das
-fixtures (`tests/fixtures/` ainda vazio; os testes correspondentes pulam).
+## [1.1.1] — 2026-09-08
 
 ### Fixed
 - `itens_da_compra`: contratação com múltiplo exato de 100 itens falhava
@@ -14,13 +11,18 @@ fixtures (`tests/fixtures/` ainda vazio; os testes correspondentes pulam).
   do fim o portal devolve 200 `[]` (verificado). A guarda de página vazia
   vale só em `Cliente.paginar`, onde há `totalPaginas`. Achado por teste
   de propriedade, não por incidente.
+- `Ata.orgao_cnpj` devolvia `None` em toda ata: o envelope real de
+  `/v1/atas/atualizacao` traz `cnpjOrgao` plano, não `orgaoEntidade.cnpj`.
+  Agora lê os dois. Achado pela fixture real no primeiro dia.
 
 ### Added (testes; sem efeito na API)
 - `tests/test_propriedades.py`: propriedades de `janelas()` (cobertura
   exata, sem lacuna/sobreposição, ≤ `max_dias`), `paginar()` e
   `itens_da_compra()` (todo registro uma vez, para qualquer total ×
   tamanho de página), com `random` da stdlib.
-- `tests/fixtures/`: envelopes reais gravados do portal, um por endpoint;
+- `tests/fixtures/`: envelopes reais gravados do portal (contratações,
+  contratos, atas, PCA, órgão, itens, resultados; termos aditivos ainda
+  sem amostra — o teste pula);
   `tests/test_fixtures_reais.py` instancia cada tipo a partir deles e lê
   todas as properties — drift de schema do PNCP aparece no CI.
 

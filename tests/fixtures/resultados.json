@@ -1,0 +1,49 @@
+[
+ {
+  "indicadorSubcontratacao": false,
+  "dataCancelamento": null,
+  "dataAtualizacao": "2026-07-01T07:58:39",
+  "tipoPessoa": "PJ",
+  "dataInclusao": "2026-07-01T07:58:39",
+  "numeroItem": 1,
+  "niFornecedor": "20321273000145",
+  "nomeRazaoSocialFornecedor": "TOTAL FACILITY SERVICOS LTDA",
+  "valorTotalHomologado": 231000.0,
+  "reservaRemanescente": {
+   "codigo": 1,
+   "nome": "Não se aplica"
+  },
+  "timezoneCotacaoMoedaEstrangeira": null,
+  "moedaEstrangeira": null,
+  "valorNominalMoedaEstrangeira": null,
+  "dataCotacaoMoedaEstrangeira": null,
+  "codigoPais": "BRA",
+  "porteFornecedorId": 1,
+  "quantidadeHomologada": 1.0,
+  "valorUnitarioHomologado": 231000.0,
+  "percentualDesconto": 0.0,
+  "amparoLegalMargemPreferencia": null,
+  "amparoLegalCriterioDesempate": {
+   "id": 146,
+   "nome": "Lei 14.133/2021, art. 60, §1º, I",
+   "descricao": "Critério de desempate: Prioriza, em situações de empate onde nenhum outro critério resolve, as empresas localizadas no território do Estado ou Distrito Federal do órgão licitante, ou, em licitações municipais, no Estado onde o município está situado.",
+   "statusAtivo": true
+  },
+  "paisOrigemProdutoServico": null,
+  "localidadeExterior": null,
+  "ordemClassificacaoSrp": null,
+  "dataResultado": "2026-07-01",
+  "motivoCancelamento": null,
+  "porteFornecedorNome": "ME",
+  "situacaoCompraItemResultadoNome": "Informado",
+  "sequencialResultado": 1,
+  "naturezaJuridicaNome": "Sociedade Empresária Limitada",
+  "localidadeFornecedor": null,
+  "aplicacaoMargemPreferencia": false,
+  "aplicacaoBeneficioMeEpp": false,
+  "aplicacaoCriterioDesempate": true,
+  "naturezaJuridicaId": "2062",
+  "numeroControlePNCPCompra": "43052497000102-1-000308/2026",
+  "situacaoCompraItemResultadoId": 1
+ }
+]
