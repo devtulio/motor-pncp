@@ -20,15 +20,15 @@ class Orgao:
     raw: dict[str, Any]
 
     @property
-    def cnpj(self):
+    def cnpj(self) -> str | None:
         return self.raw.get("cnpj")
 
     @property
-    def razao_social(self):
+    def razao_social(self) -> str | None:
         return self.raw.get("razaoSocial")
 
     @property
-    def esfera(self):
+    def esfera(self) -> str | None:
         """`M`/`E`/`F`/`N` — municipal/estadual/federal/não informada.
         Órgão de esfera estadual/federal pode aparecer nas contratações de
         um município por ter uma unidade lá (um presídio, um campus); é
@@ -42,55 +42,55 @@ class Contratacao:
     raw: dict[str, Any]
 
     @property
-    def numero_controle(self):
+    def numero_controle(self) -> str | None:
         return self.raw.get("numeroControlePNCP")
 
     @property
-    def ano(self):
+    def ano(self) -> int | None:
         return self.raw.get("anoCompra")
 
     @property
-    def sequencial(self):
+    def sequencial(self) -> int | None:
         return self.raw.get("sequencialCompra")
 
     @property
-    def orgao_cnpj(self):
+    def orgao_cnpj(self) -> str | None:
         return (self.raw.get("orgaoEntidade") or {}).get("cnpj")
 
     @property
-    def orgao_nome(self):
+    def orgao_nome(self) -> str | None:
         return (self.raw.get("orgaoEntidade") or {}).get("razaoSocial")
 
     @property
-    def unidade_nome(self):
+    def unidade_nome(self) -> str | None:
         return (self.raw.get("unidadeOrgao") or {}).get("nomeUnidade")
 
     @property
-    def modalidade_id(self):
+    def modalidade_id(self) -> int | None:
         return self.raw.get("modalidadeId")
 
     @property
-    def situacao(self):
+    def situacao(self) -> str | None:
         return self.raw.get("situacaoCompraNome")
 
     @property
-    def objeto(self):
+    def objeto(self) -> str | None:
         return self.raw.get("objetoCompra")
 
     @property
-    def valor_estimado(self):
+    def valor_estimado(self) -> float | None:
         return num(self.raw.get("valorTotalEstimado"))
 
     @property
-    def valor_homologado(self):
+    def valor_homologado(self) -> float | None:
         return num(self.raw.get("valorTotalHomologado"))
 
     @property
-    def data_atualizacao(self):
+    def data_atualizacao(self) -> str | None:
         return self.raw.get("dataAtualizacao")
 
     @property
-    def data_publicacao(self):
+    def data_publicacao(self) -> str | None:
         return self.raw.get("dataPublicacaoPncp")
 
 
@@ -99,31 +99,31 @@ class Item:
     raw: dict[str, Any]
 
     @property
-    def numero_item(self):
+    def numero_item(self) -> int | None:
         return self.raw.get("numeroItem")
 
     @property
-    def descricao(self):
+    def descricao(self) -> str | None:
         return self.raw.get("descricao")
 
     @property
-    def tem_resultado(self):
+    def tem_resultado(self) -> bool:
         return bool(self.raw.get("temResultado"))
 
     @property
-    def quantidade(self):
+    def quantidade(self) -> float | None:
         return num(self.raw.get("quantidade"))
 
     @property
-    def valor_unitario_estimado(self):
+    def valor_unitario_estimado(self) -> float | None:
         return num(self.raw.get("valorUnitarioEstimado"))
 
     @property
-    def valor_total_estimado(self):
+    def valor_total_estimado(self) -> float | None:
         return num(self.raw.get("valorTotal"))
 
     @property
-    def data_atualizacao(self):
+    def data_atualizacao(self) -> str | None:
         return self.raw.get("dataAtualizacao")
 
 
@@ -132,31 +132,31 @@ class Resultado:
     raw: dict[str, Any]
 
     @property
-    def cancelado(self):
+    def cancelado(self) -> bool:
         return bool(self.raw.get("dataCancelamento"))
 
     @property
-    def fornecedor_ni(self):
+    def fornecedor_ni(self) -> str | None:
         return primeiro(self.raw, "niFornecedor")
 
     @property
-    def fornecedor_nome(self):
+    def fornecedor_nome(self) -> str | None:
         return self.raw.get("nomeRazaoSocialFornecedor")
 
     @property
-    def valor_unitario_homologado(self):
+    def valor_unitario_homologado(self) -> float | None:
         return num(self.raw.get("valorUnitarioHomologado"))
 
     @property
-    def valor_total_homologado(self):
+    def valor_total_homologado(self) -> float | None:
         return num(self.raw.get("valorTotalHomologado"))
 
     @property
-    def quantidade_homologada(self):
+    def quantidade_homologada(self) -> float | None:
         return num(self.raw.get("quantidadeHomologada"))
 
     @property
-    def data_resultado(self):
+    def data_resultado(self) -> str | None:
         return self.raw.get("dataResultado")
 
 
@@ -165,27 +165,27 @@ class Contrato:
     raw: dict[str, Any]
 
     @property
-    def numero_controle(self):
+    def numero_controle(self) -> str | None:
         return self.raw.get("numeroControlePncpCompra")
 
     @property
-    def ano(self):
+    def ano(self) -> int | None:
         return self.raw.get("anoContrato")
 
     @property
-    def sequencial(self):
+    def sequencial(self) -> int | None:
         return self.raw.get("sequencialContrato")
 
     @property
-    def orgao_cnpj(self):
+    def orgao_cnpj(self) -> str | None:
         return (self.raw.get("orgaoEntidade") or {}).get("cnpj")
 
     @property
-    def valor_global(self):
+    def valor_global(self) -> float | None:
         return num(self.raw.get("valorGlobal"))
 
     @property
-    def data_atualizacao(self):
+    def data_atualizacao(self) -> str | None:
         return self.raw.get("dataAtualizacao")
 
 
@@ -194,11 +194,11 @@ class Ata:
     raw: dict[str, Any]
 
     @property
-    def numero_controle(self):
+    def numero_controle(self) -> str | None:
         return self.raw.get("numeroControlePNCPAta")
 
     @property
-    def orgao_cnpj(self):
+    def orgao_cnpj(self) -> str | None:
         # o envelope real de /v1/atas/atualizacao traz `cnpjOrgao` plano,
         # não `orgaoEntidade.cnpj` como contratações/contratos — lendo só o
         # aninhado, esta property devolvia None em toda ata (pego pela
@@ -207,11 +207,11 @@ class Ata:
                 or self.raw.get("cnpjOrgao"))
 
     @property
-    def vigencia_fim(self):
+    def vigencia_fim(self) -> str | None:
         return self.raw.get("vigenciaFim")
 
     @property
-    def data_atualizacao(self):
+    def data_atualizacao(self) -> str | None:
         return self.raw.get("dataAtualizacao")
 
 
@@ -223,23 +223,23 @@ class PlanoPca:
     raw: dict[str, Any]
 
     @property
-    def id_pca(self):
+    def id_pca(self) -> str | None:
         return self.raw.get("idPcaPncp")
 
     @property
-    def ano(self):
+    def ano(self) -> int | None:
         return self.raw.get("anoPca")
 
     @property
-    def orgao_cnpj(self):
+    def orgao_cnpj(self) -> str | None:
         return self.raw.get("orgaoEntidadeCnpj")
 
     @property
-    def itens(self):
+    def itens(self) -> list:
         return self.raw.get("itens") or []
 
     @property
-    def data_atualizacao(self):
+    def data_atualizacao(self) -> str | None:
         return self.raw.get("dataAtualizacao")
 
 
@@ -248,21 +248,21 @@ class TermoAditivo:
     raw: dict[str, Any]
 
     @property
-    def sequencial(self):
+    def sequencial(self) -> int | None:
         return self.raw.get("sequencialTermoContrato")
 
     @property
-    def tipo(self):
+    def tipo(self) -> str | None:
         return self.raw.get("tipoTermoContratoNome")
 
     @property
-    def valor_global(self):
+    def valor_global(self) -> float | None:
         return num(self.raw.get("valorGlobal"))
 
     @property
-    def valor_acrescido(self):
+    def valor_acrescido(self) -> float | None:
         return num(self.raw.get("valorAcrescido"))
 
     @property
-    def data_assinatura(self):
+    def data_assinatura(self) -> str | None:
         return self.raw.get("dataAssinatura")

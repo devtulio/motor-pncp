@@ -16,7 +16,7 @@ import sys
 import time
 from datetime import date, timedelta
 
-from . import Motor, PncpErro, __version__
+from . import Motor, PncpErro, __version__, ipca
 
 
 def _fase(nome, funcao, mostrar=repr):
@@ -108,7 +108,7 @@ def main(argv=None):
         pncp.append(s)
 
     print("\nBanco Central:")
-    _, s = _fase("ipca (60 dias)", lambda: len(list(motor.ipca(
+    _, s = _fase("ipca (60 dias)", lambda: len(list(ipca(
         (fim - timedelta(days=60)).strftime("%d/%m/%Y")))))
 
     def resumo(nome, fases):

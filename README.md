@@ -20,7 +20,7 @@ diferentes, e o motor não escolhe por eles.
 Cobertura atual: contratações (`contratacoes`), itens e resultados
 homologados (`itens_e_resultados`), contratos/atas/PCA de um órgão
 (`contratos`/`atas`/`pca`), termos aditivos (`termos_aditivos`), consulta
-de órgão (`consultar_orgao`), IPCA (`ipca`) e um health-check barato do
+de órgão (`consultar_orgao`), IPCA (função `ipca`, fora do `Motor` desde 1.2.0) e um health-check barato do
 portal (`sonda`, 1 requisição, 1 tentativa — pra decidir em segundos se
 vale iniciar uma coleta).
 
@@ -74,7 +74,7 @@ Instalação em cada sistema consumidor — **pinada numa tag**, nunca em
 sistema sem você pedir):
 
 ```bash
-pip install "git+https://github.com/devtulio/motor-pncp.git@v1.1.1"
+pip install "git+https://github.com/devtulio/motor-pncp.git@v1.2.0"
 ```
 
 Em modo editável durante o desenvolvimento do próprio motor:

@@ -116,7 +116,13 @@ de buscá-los (chamada cara). `contratos`: mesmo formato de dict que
 vazia quando não há aditivo (ainda assim gerado, pra você saber que já
 foi verificado).
 
-### `ipca(inicio=None) -> Iterator[dict]`
+### `ipca(inicio=None) -> Iterator[dict]` — **DEPRECADO em `Motor` desde 1.2.0**
+
+Use a função de módulo `motor_pncp.ipca(inicio=None, *, config=Config(),
+user_agent=...)`. Mesma saída; a diferença é que ela tem cliente próprio —
+uma falha do BCB não conta mais como bloqueio do PNCP no paralelismo da
+coleta. `Motor.ipca()` continua funcionando, emite `DeprecationWarning` e
+sai em 2.0.0.
 
 Variação mensal do IPCA (Banco Central, série SGS 433) desde `inicio`
 (`dd/mm/aaaa`). Gera `{"competencia": "aaaa-mm", "variacao": float}`.
@@ -303,6 +309,22 @@ causa=http503 espera=3.1s`). `WARNING`: uma linha quando as tentativas
 se esgotam. O callback `progresso` continua sendo o canal pra UI; o log
 é pra diagnóstico e métricas.
 
+### O "disjuntor" não é um circuit breaker
+
+No sentido de Fowler/Resilience4j, circuit breaker tem estado aberto,
+meio-aberto e reabre sozinho. O do motor não: ele decide **desistir da
+fase** (fail fast) e a recuperação é a próxima execução da sua
+sincronização. É o desenho certo pra coleta em lote — não há processo
+longo pra manter um estado meio-aberto — mas não espere reabertura
+automática dentro da mesma chamada.
+
+Limitação conhecida do paralelismo adaptativo: ele recua por degraus
+(4 → 2 → 1) e **volta direto** ao máximo quando a proporção de falhas
+cai, sem rampa (um AIMD subiria de 1 em 1). Pode oscilar num portal
+que alterna entre bom e ruim a cada minuto. Não foi mudado porque os
+limiares só mudam com medição — ligue o logger `motor_pncp` e conte os
+retries antes de propor outro valor.
+
 ### Disjuntor: falha ≠ ausência
 
 Quando `PncpErro` escapa de `contratacoes`/`contratos`/`atas`/`pca`, **o
@@ -376,6 +398,15 @@ dado". Do seu lado, o equivalente: não avance marca d'água sobre falha
 parcial, não carimbe uma contratação como concluída depois de
 `ItensIndisponiveis`, e não use `None` de `resultado_do_item` como prova
 de que não há resultado se a chamada falhou antes.
+
+### 404 em registro único é zona cinzenta
+
+`consultar_orgao` e `resultado_do_item` devolvem `None` em 404 — para
+esses endpoints o portal usa 404 como "não existe". Mas um 404 sob carga
+existe (é por isso que as listagens o retentam). Não grave esse `None`
+como verdade eterna: um órgão "inexistente" ou um item "sem resultado"
+merecem nova consulta na próxima sincronização, não um carimbo
+definitivo.
 
 ### Volume se lê no envelope
 

@@ -1,4 +1,5 @@
 """Constantes e helpers de domínio do PNCP — não mudam por sistema consumidor."""
+from collections.abc import Iterator
 from datetime import date, datetime, timedelta, timezone
 
 DATA_INICIO_PNCP = date(2021, 1, 1)  # portal entrou no ar em ago/2021
@@ -25,7 +26,8 @@ MODALIDADES = {
 }
 
 
-def janelas(inicio, fim, max_dias=JANELA_MAX_DIAS):
+def janelas(inicio: date, fim: date,
+            max_dias: int = JANELA_MAX_DIAS) -> Iterator[tuple[date, date]]:
     """Fatia [inicio, fim] em janelas de no máximo `max_dias`."""
     atual = inicio
     while atual <= fim:
@@ -34,12 +36,12 @@ def janelas(inicio, fim, max_dias=JANELA_MAX_DIAS):
         atual = ate + timedelta(days=1)
 
 
-def amd(d):
+def amd(d: date) -> str:
     """Data no formato AAAAMMDD exigido pela API do PNCP."""
     return d.strftime("%Y%m%d")
 
 
-def primeiro(item, *chaves):
+def primeiro(item: dict, *chaves: str):
     """Primeiro valor não-nulo entre variantes de grafia de um campo da API."""
     for chave in chaves:
         if item.get(chave) is not None:
@@ -47,7 +49,7 @@ def primeiro(item, *chaves):
     return None
 
 
-def num(v):
+def num(v) -> float | None:
     """Campo numérico da API convertido para float, ou None se malformado.
 
     Quem persiste numa coluna de afinidade numérica (ex.: REAL do SQLite)
@@ -62,7 +64,7 @@ def num(v):
         return None
 
 
-def dt(valor):
+def dt(valor: str | None) -> datetime | None:
     """String de data/hora do PNCP convertida pra `datetime` ciente de
     fuso, em UTC — sem assumir fuso local (América/São_Paulo).
 

@@ -8,6 +8,7 @@ consome. Ver README.md.
 """
 import logging
 
+from .bcb import ipca
 from .configuracao import Config
 from .dominio import (
     DATA_INICIO_PCA,
@@ -29,7 +30,7 @@ __all__ = [
     "MODALIDADES", "DATA_INICIO_PNCP", "DATA_INICIO_PCA", "JANELA_MAX_DIAS",
     "BASE", "BASE_PNCP", "janelas", "amd", "num", "primeiro", "dt",
     "Contratacao", "Item", "Resultado", "Contrato", "Ata", "PlanoPca",
-    "TermoAditivo", "Orgao",
+    "TermoAditivo", "Orgao", "ipca",
 ]
 
 # biblioteca não configura logging: só declara o logger e cala por padrão
@@ -38,4 +39,4 @@ __all__ = [
 logging.getLogger("motor_pncp").addHandler(logging.NullHandler())
 
 # fonte única da versão — pyproject.toml lê daqui (RELEASING.md §5)
-__version__ = "1.1.1"
+__version__ = "1.2.0"

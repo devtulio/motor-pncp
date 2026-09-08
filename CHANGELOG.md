@@ -2,6 +2,25 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
+## [1.2.0] — 2026-09-08
+
+Fecha os itens de design da revisão contra a literatura.
+
+### Added
+- `motor_pncp.ipca(inicio=None, *, config=..., user_agent=...)`: função
+  de módulo com cliente próprio — falha do BCB não conta mais como
+  bloqueio do PNCP no paralelismo da coleta.
+- `py.typed` (PEP 561) e anotações de retorno em todos os métodos
+  públicos do `Motor`, helpers de `dominio` e properties dos tipos:
+  consumidor passa a type-checkar o que o motor devolve.
+- MANUAL: "o disjuntor não é um circuit breaker" (e a limitação de
+  histerese do paralelismo adaptativo), "404 em registro único é zona
+  cinzenta".
+
+### Deprecated
+- `Motor.ipca()`: emite `DeprecationWarning`, delega para a função nova.
+  Remoção em 2.0.0.
+
 ## [1.1.1] — 2026-09-08
 
 ### Fixed

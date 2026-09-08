@@ -10,7 +10,7 @@ Só isto é coberto pelo número de versão:
 - Tudo exportado em `motor_pncp/__init__.py`: `Motor` e seus métodos
   públicos (nome, assinatura, tipo de retorno, exceções levantadas),
   `Config` (campos e defaults), os dataclasses de `tipos` (properties),
-  as exceções, os helpers de `dominio`.
+  as exceções, os helpers de `dominio`, a função `ipca`.
 - O CLI `python -m motor_pncp`: argumentos e código de saída.
 
 **Não é contrato** (mesmo que alguém dependa — Hyrum's Law): módulos com

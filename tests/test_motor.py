@@ -208,25 +208,53 @@ def test_sonda_propaga_pncperro(monkeypatch):
 # ── ipca() ───────────────────────────────────────────────────────────────
 
 def test_ipca_usa_o_cliente_e_gera_competencias(monkeypatch):
+    from motor_pncp import ipca
     monkeypatch.setattr(
         Cliente, "get",
         lambda self, *a, **k: [{"data": "01/01/2026", "valor": "0.5"}])
-    resultado = list(Motor().ipca())
-    assert resultado == [{"competencia": "2026-01", "variacao": 0.5}]
+    assert list(ipca()) == [{"competencia": "2026-01", "variacao": 0.5}]
 
 
 def test_ipca_none_nao_quebra(monkeypatch):
+    from motor_pncp import ipca
     monkeypatch.setattr(Cliente, "get", lambda self, *a, **k: None)
-    assert list(Motor().ipca()) == []
+    assert list(ipca()) == []
 
 
 def test_ipca_propaga_pncperro_do_cliente(monkeypatch):
+    from motor_pncp import ipca
+
     def get_fake(self, *a, **k):
         raise PncpErro("BCB fora do ar")
 
     monkeypatch.setattr(Cliente, "get", get_fake)
     with pytest.raises(PncpErro, match="BCB fora do ar"):
-        list(Motor().ipca())
+        list(ipca())
+
+
+def test_ipca_nao_suja_o_adaptativo_do_motor(monkeypatch):
+    """Motivo de sair do Motor: falha do BCB contava como bloqueio do
+    PNCP e derrubava o paralelismo da coleta seguinte."""
+    from motor_pncp import ipca
+
+    def get_fake(self, *a, **k):
+        self._adaptativo.registrar_bloqueio()
+        raise PncpErro("BCB fora do ar")
+
+    monkeypatch.setattr(Cliente, "get", get_fake)
+    motor = Motor()
+    with pytest.raises(PncpErro):
+        list(ipca())
+    assert motor._adaptativo.bloqueios_recentes() == 0
+
+
+def test_motor_ipca_deprecado_avisa_e_delega(monkeypatch):
+    monkeypatch.setattr(
+        Cliente, "get",
+        lambda self, *a, **k: [{"data": "01/02/2026", "valor": "0.1"}])
+    with pytest.warns(DeprecationWarning, match="motor_pncp.ipca"):
+        resultado = list(Motor().ipca())
+    assert resultado == [{"competencia": "2026-02", "variacao": 0.1}]
 
 
 # ── itens_e_resultados() ─────────────────────────────────────────────────

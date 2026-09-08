@@ -11,8 +11,11 @@ Ver README.md para o porquê de cada limiar de resiliência (em `Config`).
 """
 import concurrent.futures
 import time
+import warnings
+from collections.abc import Iterable, Iterator
 from datetime import date
 
+from . import bcb
 from ._http import USER_AGENT_PADRAO, Cliente
 from ._resiliencia import Adaptativo, Disjuntor
 from .configuracao import Config
@@ -32,8 +35,6 @@ BASE = "https://pncp.gov.br/api/consulta"
 # portal, não na de consulta; alguns endpoints devolvem array puro (sem
 # envelope data/totalPaginas).
 BASE_PNCP = "https://pncp.gov.br/api/pncp"
-
-_URL_BCB = "https://api.bcb.gov.br"
 
 __all__ = [
     "Motor", "Config", "PncpErro", "SyncCancelado", "ItensIndisponiveis",
@@ -71,6 +72,7 @@ class Motor:
     def __init__(self, *, config: Config = Config(), user_agent=USER_AGENT_PADRAO,
                  progresso=None, cancelado=None, base=BASE, base_pncp=BASE_PNCP):
         self._config = config
+        self._user_agent = user_agent
         self._adaptativo = Adaptativo(config)
         self._cliente = Cliente(self._adaptativo, config=config,
                                 user_agent=user_agent, progresso=progresso,
@@ -80,7 +82,7 @@ class Motor:
 
     # ── sonda ────────────────────────────────────────────────────────────
 
-    def sonda(self):
+    def sonda(self) -> float:
         """Uma requisição barata pra saber se `api/consulta` responde.
 
         Bate em `/v1/atas` (vigência de hoje, 10 registros) — o endpoint
@@ -156,7 +158,7 @@ class Motor:
 
     # ── contratações ─────────────────────────────────────────────────────
 
-    def contratacoes(self, codigo_ibge, inicio, fim):
+    def contratacoes(self, codigo_ibge, inicio: date, fim: date) -> Iterator[Contratacao]:
         """Gera `Contratacao` atualizadas de um município, por modalidade e
         janela de datas.
 
@@ -182,7 +184,8 @@ class Motor:
                                               tamanho_pagina=50):
             yield Contratacao(raw)
 
-    def contar_contratacoes(self, codigo_ibge, inicio=DATA_INICIO_PNCP, fim=None):
+    def contar_contratacoes(self, codigo_ibge, inicio: date = DATA_INICIO_PNCP,
+                            fim: date | None = None) -> dict:
         """Quantas contratações um município tem, sem baixar nenhuma.
 
         Lê `totalRegistros` do envelope da primeira página de cada
@@ -220,7 +223,7 @@ class Motor:
 
     # ── contratos, atas, PCA (fase 2 — por CNPJ de órgão) ───────────────
 
-    def contratos(self, cnpj, inicio, fim):
+    def contratos(self, cnpj, inicio: date, fim: date) -> Iterator[Contrato]:
         """Gera `Contrato` de um órgão atualizados na janela — a API não
         filtra por município, só por CNPJ."""
         for raw in self._janela_generica("/v1/contratos/atualizacao",
@@ -228,7 +231,7 @@ class Motor:
                                          rotulo_fase="Contratos"):
             yield Contrato(raw)
 
-    def atas(self, cnpj, inicio, fim):
+    def atas(self, cnpj, inicio: date, fim: date) -> Iterator[Ata]:
         """Gera `Ata` de registro de preços de um órgão atualizadas na
         janela."""
         for raw in self._janela_generica("/v1/atas/atualizacao",
@@ -236,7 +239,7 @@ class Motor:
                                          rotulo_fase="Atas"):
             yield Ata(raw)
 
-    def pca(self, cnpj, inicio, fim):
+    def pca(self, cnpj, inicio: date, fim: date) -> Iterator[PlanoPca]:
         """Gera `PlanoPca` (Plano de Contratações Anual) de um órgão
         atualizados na janela.
 
@@ -254,7 +257,7 @@ class Motor:
 
     # ── órgãos ───────────────────────────────────────────────────────────
 
-    def consultar_orgao(self, cnpj):
+    def consultar_orgao(self, cnpj) -> Orgao | None:
         """`Orgao` do CNPJ no PNCP (razão social, esfera) — `None` se o
         CNPJ não existe no portal."""
         raw = self._cliente.get(self._base_pncp, f"/v1/orgaos/{cnpj}", {})
@@ -262,7 +265,7 @@ class Motor:
 
     # ── itens e resultados ───────────────────────────────────────────────
 
-    def itens_da_compra(self, cnpj, ano, sequencial):
+    def itens_da_compra(self, cnpj, ano, sequencial) -> Iterator[Item]:
         """Gera `Item` de uma contratação (endpoint devolve array puro,
         paginado — sem envelope `totalPaginas`; o único sinal de fim é a
         página vir com MENOS de `tamanhoPagina`).
@@ -294,7 +297,8 @@ class Motor:
                 return
             pagina += 1
 
-    def resultado_do_item(self, cnpj, ano, sequencial, numero_item, pacing=True):
+    def resultado_do_item(self, cnpj, ano, sequencial, numero_item,
+                          pacing=True) -> Resultado | None:
         """`Resultado` homologado de um item: vencedor e valor unitário
         fechado, ou `None` se o item ainda não tem resultado.
 
@@ -311,7 +315,9 @@ class Motor:
         validos = [r for r in lote if not r.get("dataCancelamento")]
         return Resultado((validos or lote)[0])
 
-    def itens_e_resultados(self, contratacoes, *, pendente=None, on_erro=None):
+    def itens_e_resultados(
+            self, contratacoes: Iterable[dict], *, pendente=None, on_erro=None,
+    ) -> Iterator[tuple[dict, list[tuple[Item, Resultado | None]]]]:
         """Para cada contratação, busca itens e resultados homologados.
 
         `contratacoes`: iterável de dicts com pelo menos `orgao_cnpj`,
@@ -415,7 +421,8 @@ class Motor:
             f"/v1/orgaos/{cnpj}/contratos/{ano}/{sequencial}/termos",
             {}, modo_404="erro") or []
 
-    def termos_aditivos(self, contratos, *, on_erro=None):
+    def termos_aditivos(self, contratos: Iterable[dict], *,
+                        on_erro=None) -> Iterator[tuple[dict, list[TermoAditivo]]]:
         """Para cada contrato, busca os termos aditivos (se houver).
 
         `contratos`: iterável de dicts com pelo menos `orgao_cnpj`, `ano`,
@@ -461,34 +468,15 @@ class Motor:
                         f"concluído, em {i} de {len(pendentes)} "
                         f"contratos — {e}") from e
 
-    # ── correção monetária ───────────────────────────────────────────────
+    # ── correção monetária (DEPRECADO — ver `motor_pncp.ipca`) ──────────
 
-    def ipca(self, inicio=None):
-        """Variação mensal do IPCA desde `inicio` (dd/mm/aaaa) — gera
-        dicts `{"competencia": "aaaa-mm", "variacao": float}`.
-
-        Fonte: Banco Central (série SGS 433), citável no processo. Preço
-        de anos diferentes não se compara sem essa correção — a inflação
-        acumulada num acervo de vários anos passa de 20%.
-
-        Passa pelo mesmo `Cliente` das demais fases — mesmo retry/backoff
-        e classificação de erro em `PncpErro`, em vez de uma tentativa
-        única sem chance de se recuperar de um soluço passageiro do BCB.
-        Efeito colateral aceito: uma falha do BCB soma no mesmo contador
-        de bloqueios do PNCP (`Adaptativo` é por `Motor`, não por host) —
-        chamada única no início da coleta, se autocorrige no primeiro
-        sucesso da fase seguinte.
+    def ipca(self, inicio: str | None = None) -> Iterator[dict]:
+        """DEPRECADO desde 1.2.0; sai em 2.0.0. Use `motor_pncp.ipca(inicio,
+        config=..., user_agent=...)` — mesma saída, mas com cliente próprio:
+        uma falha do BCB não suja mais o contador de bloqueios do PNCP.
         """
-        inicio = inicio or f"01/01/{DATA_INICIO_PNCP.year}"
-        dados = self._cliente.get(
-            _URL_BCB, "/dados/serie/bcdata.sgs.433/dados",
-            {"formato": "json", "dataInicial": inicio})
-        if dados is None:
-            return
-        for linha in dados:
-            try:
-                dia, mes, ano = linha["data"].split("/")
-                variacao = float(linha["valor"])
-            except (KeyError, ValueError):
-                continue  # linha estranha não derruba a série inteira
-            yield {"competencia": f"{ano}-{mes}", "variacao": variacao}
+        warnings.warn(
+            "Motor.ipca() está deprecado desde 1.2.0 e sai em 2.0.0; use "
+            "motor_pncp.ipca(inicio, config=..., user_agent=...)",
+            DeprecationWarning, stacklevel=2)
+        return bcb.ipca(inicio, config=self._config, user_agent=self._user_agent)

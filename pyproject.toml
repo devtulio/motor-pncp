@@ -17,6 +17,10 @@ dev = ["pytest>=7", "ruff>=0.6", "bandit>=1.7"]
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+# PEP 561: consumidores podem checar tipos contra os stubs inline
+motor_pncp = ["py.typed"]
+
 [tool.setuptools.dynamic]
 # fonte única da versão: src/motor_pncp/__init__.py (ver RELEASING.md §5)
 version = {attr = "motor_pncp.__version__"}
