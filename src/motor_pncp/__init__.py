@@ -30,4 +30,5 @@ __all__ = [
     "TermoAditivo", "Orgao",
 ]
 
-__version__ = "0.4.4"
+# fonte única da versão — pyproject.toml lê daqui (RELEASING.md §5)
+__version__ = "1.0.0"

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "motor-pncp"
-version = "0.4.4"
+dynamic = ["version"]
 description = "Motor de coleta do PNCP: HTTP resiliente contra o portal, sem opinião sobre persistência."
 license = {file = "LICENSE"}
 authors = [{name = "Túlio Ribeiro de Moura e Silva"}]
@@ -16,6 +16,10 @@ dev = ["pytest>=7", "ruff>=0.6", "bandit>=1.7"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic]
+# fonte única da versão: src/motor_pncp/__init__.py (ver RELEASING.md §5)
+version = {attr = "motor_pncp.__version__"}
 
 [tool.pytest.ini_options]
 # testar SEMPRE a árvore src/, mesmo com outra versão do pacote instalada

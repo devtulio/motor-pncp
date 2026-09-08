@@ -1,7 +1,10 @@
 # Manual — motor_pncp
 
 Referência completa da API pública. Para instalação e um exemplo rápido,
-ver [README.md](README.md).
+ver [README.md](README.md). Tudo que está documentado aqui é **contrato**
+— só muda em major, com depreciação antes; o que não está (módulos com
+`_`, texto de mensagens, valores dos limiares) não é. Regras completas em
+[RELEASING.md](RELEASING.md).
 
 ## Índice
 

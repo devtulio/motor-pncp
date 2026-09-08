@@ -2,6 +2,24 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
+## [1.0.0] — 2026-09-08
+
+Declara o contrato. Sem mudança de comportamento em relação à 0.4.4 — o
+que muda é a promessa: a partir daqui a API pública descrita em
+[RELEASING.md](RELEASING.md) §1 só quebra em major, com depreciação
+antes. O motor está em produção e a API está estável há várias tags;
+SemVer diz que isso já é 1.0.0.
+
+### Added
+- `RELEASING.md`: política de versão e release (o que é API pública,
+  como o número muda, gates, depreciação, cadência).
+
+### Changed
+- Versão em fonte única: `src/motor_pncp/__init__.py`; `pyproject.toml`
+  passa a ler de lá (`dynamic = ["version"]`).
+- Só documentação não bumpa mais versão (era patch nas 0.4.1, 0.4.3 e
+  0.4.4). Versão reflete comportamento.
+
 ## [0.4.4] — 2026-09-08
 
 Sem mudança de código.

@@ -6,7 +6,8 @@ Pacote `motor_pncp` (`src/`) — motor de coleta do PNCP (Portal Nacional de
 Contratações Públicas) pra ser usado por qualquer sistema. Só stdlib.
 
 Referência completa da API: [MANUAL.md](MANUAL.md). Histórico:
-[CHANGELOG.md](CHANGELOG.md).
+[CHANGELOG.md](CHANGELOG.md). O que é contrato, como a versão muda e
+como sai release: [RELEASING.md](RELEASING.md).
 
 **Fronteira:** o motor faz HTTP resiliente contra o portal (retry com
 backoff, paralelismo e nº de tentativas que recuam sozinhos sob storm,
@@ -73,7 +74,7 @@ Instalação em cada sistema consumidor — **pinada numa tag**, nunca em
 sistema sem você pedir):
 
 ```bash
-pip install "git+https://github.com/devtulio/motor-pncp.git@v0.4.4"
+pip install "git+https://github.com/devtulio/motor-pncp.git@v1.0.0"
 ```
 
 Em modo editável durante o desenvolvimento do próprio motor:
