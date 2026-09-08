@@ -1,6 +1,6 @@
 # Motor de Coleta
 
-[![CI](https://github.com/devtulio/motor-pncp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/motor-pncp/actions/workflows/ci.yml) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20stdlib-orange) ![Fonte](https://img.shields.io/badge/fonte-PNCP-informational)
+![Versão](https://img.shields.io/github/v/release/devtulio/motor-pncp?label=vers%C3%A3o&color=blue) [![CI](https://github.com/devtulio/motor-pncp/actions/workflows/ci.yml/badge.svg)](https://github.com/devtulio/motor-pncp/actions/workflows/ci.yml) ![Licença](https://img.shields.io/badge/licença-MIT-green) ![Tecnologia](https://img.shields.io/badge/tecnologia-Python%20stdlib-orange) ![Fonte](https://img.shields.io/badge/fonte-PNCP-informational)
 
 Pacote `motor_pncp` (`src/`) — motor de coleta do PNCP (Portal Nacional de
 Contratações Públicas) pra ser usado por qualquer sistema. Só stdlib.
