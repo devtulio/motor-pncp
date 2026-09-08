@@ -246,3 +246,113 @@ def test_beacon_cancelamento_nao_e_engolido(urlopen_fake):
     urlopen_fake.append(resposta_json({"ok": True}))
     with pytest.raises(SyncCancelado):
         c.get("https://x", "/y", {}, tentativas=3)
+
+
+# ── 1.1.0: jitter, Retry-After, pacing em paralelo, cancelamento, logging ──
+
+def test_espera_e_full_jitter_no_intervalo_inteiro():
+    """Brooker (AWS 2015): sortear em [0, 2^n], nao somar meio segundo."""
+    from motor_pncp._http import _espera
+    amostras = [_espera(3) for _ in range(500)]
+    assert all(0 <= a <= 8 for a in amostras)
+    assert min(amostras) < 2 and max(amostras) > 6  # espalha de verdade
+
+
+def test_retry_after_inteiro_data_http_e_teto():
+    import email.utils
+    import time as _t
+
+    from motor_pncp._http import _retry_after
+    assert _retry_after({"Retry-After": "7"}, 120) == 7
+    assert _retry_after({"Retry-After": "900"}, 120) == 120
+    assert _retry_after({}, 120) is None
+    assert _retry_after({"Retry-After": "daqui a pouco"}, 120) is None
+    futuro = email.utils.formatdate(_t.time() + 30, usegmt=True)
+    assert 25 <= _retry_after({"Retry-After": futuro}, 120) <= 30
+    passado = email.utils.formatdate(_t.time() - 30, usegmt=True)
+    assert _retry_after({"Retry-After": passado}, 120) == 0
+
+
+def test_503_honra_retry_after(urlopen_fake, monkeypatch):
+    """RFC 9110 define Retry-After pra 503 tambem, nao so 429."""
+    dormidas = []
+    monkeypatch.setattr(Cliente, "_dormir", lambda self, s: dormidas.append(s))
+    urlopen_fake.append(erro_http(503, {"Retry-After": "9"}))
+    urlopen_fake.append(resposta_json({"ok": True}))
+    cliente().get("https://x", "/y", {}, tentativas=3)
+    assert 9 in dormidas
+
+
+def test_429_sem_header_nunca_espera_zero(urlopen_fake, monkeypatch):
+    dormidas = []
+    monkeypatch.setattr(Cliente, "_dormir", lambda self, s: dormidas.append(s))
+    urlopen_fake.append(erro_http(429))
+    urlopen_fake.append(resposta_json({"ok": True}))
+    cliente().get("https://x", "/y", {}, tentativas=3)
+    assert any(2.5 <= d <= 5 for d in dormidas)  # o resto e pacing
+
+
+def test_pacing_vale_em_paralelo(urlopen_fake, monkeypatch):
+    """Intervalo minimo e por host, nao por thread: 4 threads sem pacing
+    eram 4 rajadas simultaneas (Mercator; Olston & Najork)."""
+    import threading
+
+    from motor_pncp.configuracao import Config
+    dormidas = []
+    monkeypatch.setattr(Cliente, "_dormir", lambda self, s: dormidas.append(s))
+    urlopen_fake.extend([resposta_json({"ok": True})] * 4)
+    c = Cliente(Adaptativo(), config=Config(intervalo_min=0.5))
+    threads = [threading.Thread(target=c.get, args=("https://x", "/y", {}))
+               for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert len(dormidas) >= 3  # a 1a passa; as outras esperam o intervalo
+
+
+def test_cancelado_acorda_o_backoff(urlopen_fake):
+    """Event acionado durante a espera de retry interrompe na hora, mesmo
+    com o beacon silenciado pelo Dedup."""
+    import threading
+
+    from motor_pncp.excecoes import SyncCancelado
+    evento = threading.Event()
+    urlopen_fake.append(erro_http(503))
+    c = Cliente(Adaptativo(), cancelado=evento)
+    # o pedido de parada chega enquanto o retry esta sendo preparado
+    c._avisar_causa_recorrente = lambda chave, msg: evento.set()
+    with pytest.raises(SyncCancelado):
+        c.get("https://x", "/y", {}, tentativas=3)
+    assert len(urlopen_fake) == 0  # consumiu o 503 e nao tentou de novo
+
+
+def test_cancelado_antes_da_primeira_tentativa(urlopen_fake):
+    import threading
+
+    from motor_pncp.excecoes import SyncCancelado
+    evento = threading.Event()
+    evento.set()
+    urlopen_fake.append(resposta_json({"ok": True}))
+    with pytest.raises(SyncCancelado):
+        Cliente(Adaptativo(), cancelado=evento).get("https://x", "/y", {})
+    assert len(urlopen_fake) == 1  # urlopen nem foi chamado
+
+
+def test_logging_registra_tentativas_e_esgotamento(urlopen_fake, caplog):
+    import logging
+    urlopen_fake.extend([erro_http(503), erro_http(503)])
+    with caplog.at_level(logging.DEBUG, logger="motor_pncp"):
+        with pytest.raises(PncpErro):
+            cliente().get("https://x", "/y", {}, tentativas=2)
+    textos = [r.getMessage() for r in caplog.records]
+    assert any("retry /y tentativa=1 causa=http503" in t for t in textos)
+    assert any(r.levelno == logging.WARNING for r in caplog.records)
+
+
+def test_logger_da_biblioteca_tem_nullhandler():
+    import logging
+
+    import motor_pncp  # noqa: F401
+    assert any(isinstance(h, logging.NullHandler)
+               for h in logging.getLogger("motor_pncp").handlers)

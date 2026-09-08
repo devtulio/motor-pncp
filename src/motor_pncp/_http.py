@@ -6,14 +6,17 @@ DNS) é o mesmo em urllib/requests/httpx — trocar não resolve nada e soma
 uma dependência nova ao empacotamento. Ver README.md.
 """
 import concurrent.futures
+import email.utils
 import http.client
 import json
+import logging
 import random
 import threading
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
 from typing import Literal
 
 from ._resiliencia import Dedup
@@ -21,6 +24,12 @@ from .configuracao import Config
 from .excecoes import ItensIndisponiveis, PncpErro, SyncCancelado
 
 USER_AGENT_PADRAO = "motor-pncp/0.1 (coleta de contratacoes; open-source)"
+
+# Logger de biblioteca: sem handler próprio (NullHandler em __init__.py);
+# quem consome liga `logging.getLogger("motor_pncp")` se quiser contar
+# tentativas, status e latência por requisição. O callback `progresso`
+# continua sendo o canal pra UI — isto é diagnóstico.
+_log = logging.getLogger("motor_pncp")
 
 # Códigos que o PNCP devolve por sobrecarga, não por defeito no pedido.
 # 422 entrou depois de um incidente real: numa madrugada de 429/500/503/504,
@@ -57,12 +66,40 @@ def _motivo(erro):
 
 
 def _espera(tentativa):
-    """Backoff com sorteio: 1, 2, 4, 8s + até meio segundo de desvio.
+    """Backoff exponencial com *full jitter*: sorteio em [0, 2^tentativa].
 
-    Sem o desvio, conexões que falharam juntas voltam juntas e repetem a
-    mesma rajada contra um portal que já estava sobrecarregado.
+    Um desvio pequeno somado ao expoente (o desenho anterior, +0,5s) não
+    desfaz a sincronização: conexões que falharam juntas voltam dentro de
+    meio segundo uma da outra e repetem a rajada. Sortear o intervalo
+    inteiro espalha as voltas de verdade (é a variante com menos chamadas
+    totais na simulação de Brooker, AWS 2015). O piso de 0s é coberto
+    pelo pacing, que vale também em paralelo.
     """
-    return 2 ** tentativa + random.uniform(0, 0.5)
+    return random.uniform(0, 2 ** tentativa)
+
+
+def _retry_after(headers, teto):
+    """Segundos pedidos em `Retry-After` (inteiro ou data HTTP, RFC 9110
+    §10.2.3), limitados a `teto`; `None` se ausente ou ilegível.
+
+    Vale para 429 e 503 — a spec define o header para os dois. O teto
+    existe porque um portal pode pedir uma hora; a coleta não pode ficar
+    muda numa thread esse tempo todo.
+    """
+    valor = (headers.get("Retry-After") or "").strip()
+    if not valor:
+        return None
+    if valor.isdigit():
+        segundos = int(valor)
+    else:
+        try:
+            quando = email.utils.parsedate_to_datetime(valor)
+        except (TypeError, ValueError):
+            return None
+        if quando.tzinfo is None:
+            quando = quando.replace(tzinfo=timezone.utc)
+        segundos = (quando - datetime.now(timezone.utc)).total_seconds()
+    return max(0.0, min(float(segundos), teto))
 
 
 class Cliente:
@@ -70,18 +107,36 @@ class Cliente:
     de módulo, para não vazar estado entre coletas."""
 
     def __init__(self, adaptativo, *, config: Config = Config(),
-                 user_agent=USER_AGENT_PADRAO, progresso=None):
+                 user_agent=USER_AGENT_PADRAO, progresso=None, cancelado=None):
         self._adaptativo = adaptativo
         self._config = config
         self._dedup = Dedup(config.janela_operacional)
         self._user_agent = user_agent
         self._progresso = progresso
+        self._cancelado = cancelado
         self._ultima_req = 0.0
         self._trava_pacing = threading.Lock()
 
     def _timeout(self, tentativa):
         timeouts = self._config.timeouts
         return timeouts[min(tentativa, len(timeouts) - 1)]
+
+    def _checar_cancelado(self):
+        if self._cancelado is not None and self._cancelado.is_set():
+            raise SyncCancelado("coleta cancelada")
+
+    def _dormir(self, segundos):
+        """`time.sleep` que acorda na hora se `cancelado` for acionado.
+
+        Sem isto, o backoff (até 8s) e a espera de `Retry-After` são o
+        único trecho da coleta em que o pedido de parada não chega: o
+        callback `progresso` (o outro ponto de checagem) pode estar
+        silenciado pelo `Dedup` dentro da janela de uma causa repetida.
+        """
+        if self._cancelado is None:
+            time.sleep(segundos)
+        elif self._cancelado.wait(segundos):
+            raise SyncCancelado("coleta cancelada")
 
     def avisar_progresso(self, msg):
         """Beacon: chamado a cada tentativa de retry (não só no fim de uma
@@ -132,14 +187,32 @@ class Cliente:
         if tentativas is None:
             tentativas = self._adaptativo.tentativas_atual()
         url = f"{url_base}{caminho}?{urllib.parse.urlencode(params)}"
+
+        def retentar(chave, mensagem, espera):
+            # caminho comum de toda falha transitória: conta como bloqueio
+            # (o paralelismo cai sozinho na próxima leva, em vez de insistir
+            # com várias conexões contra quem já pede trégua), avisa uma vez
+            # por causa, loga e dorme — acordando se a coleta for cancelada
+            self._adaptativo.registrar_bloqueio()
+            self._avisar_causa_recorrente(chave, mensagem)
+            _log.debug("retry %s tentativa=%d causa=%s espera=%.1fs",
+                       caminho, tentativa + 1, chave, espera)
+            self._dormir(espera)
+
         for tentativa in range(tentativas):
+            self._checar_cancelado()
             if pacing:
+                # uma trava por Cliente, valendo também pras threads em
+                # paralelo: o intervalo mínimo é entre requisições ao
+                # portal, não por conexão — sem isso, 4 threads sem pacing
+                # eram 4 rajadas simultâneas contra um host com throttling
                 with self._trava_pacing:
                     espera = (self._config.intervalo_min
                              - (time.monotonic() - self._ultima_req))
                     if espera > 0:
-                        time.sleep(espera)
+                        self._dormir(espera)
                     self._ultima_req = time.monotonic()
+            inicio = time.monotonic()
             try:
                 req = urllib.request.Request(
                     url, headers={"User-Agent": self._user_agent,
@@ -150,6 +223,8 @@ class Cliente:
                     # não sabem se alguns 429 numa janela são o portal
                     # recusando ou o ruído normal de uma fila grande andando
                     self._adaptativo.registrar_sucesso()
+                    _log.debug("GET %s status=%d tentativa=%d %.2fs", caminho,
+                               resp.status, tentativa + 1, time.monotonic() - inicio)
                     if resp.status == 204:
                         return None
                     corpo = resp.read()
@@ -161,11 +236,10 @@ class Cliente:
                     raise ItensIndisponiveis(f"HTTP 404 em {caminho}") from e
                 if e.code == 404 and modo_404 == "retry":
                     if tentativa < tentativas - 1:
-                        self._adaptativo.registrar_bloqueio()
-                        self._avisar_causa_recorrente(
-                            "http404", f"PNCP com HTTP 404 em {caminho}")
-                        time.sleep(_espera(tentativa))
+                        retentar("http404", f"PNCP com HTTP 404 em {caminho}",
+                                 _espera(tentativa))
                         continue
+                    _log.warning("HTTP 404 persistente em %s", caminho)
                     raise PncpErro(
                         f"HTTP 404 persistente em {caminho} — listagem não "
                         "responde; abortando para não gravar a janela como "
@@ -173,27 +247,26 @@ class Cliente:
                 if e.code in (204, 404):
                     return None  # sem registros para o filtro
                 if e.code == 429 and tentativa < tentativas - 1:
-                    self._adaptativo.registrar_bloqueio()
-                    self._avisar_causa_recorrente(
-                        "http429", f"PNCP pedindo pra esperar (429) em {caminho}")
-                    retry_after = e.headers.get("Retry-After")
-                    time.sleep(int(retry_after) if (retry_after or "").isdigit()
-                               else 5 * (tentativa + 1))
+                    pedido = _retry_after(e.headers, self._config.retry_after_teto)
+                    # sem header: espera conservadora (5, 10, 15s…) com
+                    # sorteio na metade de cima — piso de 429 não pode ser 0
+                    espera = (pedido if pedido is not None
+                              else random.uniform(2.5, 5) * (tentativa + 1))
+                    retentar("http429", f"PNCP pedindo pra esperar (429) em {caminho}",
+                             espera)
                     continue
                 teto = min(tentativas, TENTATIVAS_422) if e.code == 422 else tentativas
                 if e.code in HTTP_TRANSITORIOS and tentativa < teto - 1:
-                    # portal sobrecarregado conta como bloqueio: o
-                    # paralelismo cai sozinho na próxima leva, em vez de
-                    # insistir com várias conexões contra quem já está
-                    # pedindo trégua
-                    self._adaptativo.registrar_bloqueio()
-                    self._avisar_causa_recorrente(
-                        f"http{e.code}", f"PNCP respondeu HTTP {e.code} em {caminho}")
-                    time.sleep(_espera(tentativa))
+                    pedido = (_retry_after(e.headers, self._config.retry_after_teto)
+                              if e.code == 503 else None)
+                    retentar(f"http{e.code}", f"PNCP respondeu HTTP {e.code} em {caminho}",
+                             pedido if pedido is not None else _espera(tentativa))
                     continue
                 # o corpo do 4xx do PNCP costuma trazer o motivo de
                 # verdade — descartá-lo deixa só o código, sem nada pra
                 # diagnosticar sem reproduzir a chamada à mão
+                _log.warning("HTTP %d em %s após %d tentativa(s)", e.code, caminho,
+                             tentativa + 1)
                 raise PncpErro(f"HTTP {e.code} em {caminho}{_motivo(e)}") from e
             except ValueError as e:
                 # 200 com corpo que não é JSON: o portal devolve página de
@@ -202,12 +275,12 @@ class Cliente:
                 # escapa inteira e mata a coleta sem log nenhum do lado de
                 # quem chama.
                 if tentativa < tentativas - 1:
-                    self._adaptativo.registrar_bloqueio()
-                    self._avisar_causa_recorrente(
-                        "corpo_invalido",
-                        f"PNCP devolveu resposta ilegível em {caminho}")
-                    time.sleep(_espera(tentativa))
+                    retentar("corpo_invalido",
+                             f"PNCP devolveu resposta ilegível em {caminho}",
+                             _espera(tentativa))
                     continue
+                _log.warning("resposta ilegível em %s após %d tentativa(s)",
+                             caminho, tentativa + 1)
                 raise PncpErro(
                     f"o PNCP devolveu resposta ilegível em {caminho} "
                     f"(não era JSON: {e})") from e
@@ -218,13 +291,13 @@ class Cliente:
                 # inteira e mata a coleta sem log nenhum do lado de quem
                 # chama.
                 if tentativa < tentativas - 1:
-                    self._adaptativo.registrar_bloqueio()
-                    self._avisar_causa_recorrente(
-                        f"rede:{type(e).__name__}",
-                        f"PNCP lento ou fora do ar em {caminho} "
-                        f"({type(e).__name__})")
-                    time.sleep(_espera(tentativa))
+                    retentar(f"rede:{type(e).__name__}",
+                             f"PNCP lento ou fora do ar em {caminho} "
+                             f"({type(e).__name__})",
+                             _espera(tentativa))
                     continue
+                _log.warning("rede em %s após %d tentativa(s): %s", caminho,
+                             tentativa + 1, type(e).__name__)
                 # "sem conexão" faz o usuário procurar defeito na internet
                 # dele; o que costuma acontecer de fato é o portal demorar
                 if "timed out" in str(e).lower() or isinstance(e, TimeoutError):
@@ -304,7 +377,7 @@ class Cliente:
             ex = concurrent.futures.ThreadPoolExecutor(conexoes)
             try:
                 futuros = {ex.submit(lambda p=p: list(self.paginar(
-                    url_base, caminho, p, tamanho_pagina, pacing=False))): rotulo
+                    url_base, caminho, p, tamanho_pagina))): rotulo
                     for rotulo, p in leva}
                 for f in concurrent.futures.as_completed(futuros):
                     try:

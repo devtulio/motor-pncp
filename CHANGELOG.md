@@ -2,6 +2,39 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
+## [1.1.0] — 2026-09-08
+
+Revisão contra a literatura de resiliência (Brooker/AWS, SRE cap. 22,
+RFC 9110, Mercator/Olston & Najork, HOWTO de logging do Python).
+Mudanças de comportamento validadas com smoke contra o portal real.
+
+### Added
+- `Motor(cancelado=threading.Event)`: token de parada separado do beacon
+  `progresso`. Interrompe antes da próxima requisição e acorda na hora
+  qualquer espera de backoff/`Retry-After` — o beacon fica silenciado
+  pelo agrupamento de avisos repetidos durante um storm, e por ele a
+  parada podia demorar minutos.
+- Logger `motor_pncp` (com `NullHandler`, mudo por padrão): `DEBUG` por
+  requisição e por retry (caminho, status, tentativa, latência, causa,
+  espera), `WARNING` ao esgotar tentativas.
+- `Config.retry_after_teto` (default 120 s).
+
+### Changed
+- Backoff com *full jitter*: sorteio em `[0, 2^tentativa]` em vez de
+  `2^tentativa + até 0,5 s`. Um desvio de meio segundo não descorrelaciona
+  conexões que falharam juntas.
+- `Retry-After` honrado também em 503 (não só 429), aceitando data HTTP
+  além de segundos, limitado a `retry_after_teto`.
+- Espera de 429 sem header passa a ter sorteio (`[2,5–5] × tentativa`),
+  nunca zero.
+- Pacing (`intervalo_min`) vale também entre as threads em paralelo: o
+  intervalo mínimo é por host, não por conexão. Antes, 4 threads sem
+  pacing eram 4 rajadas simultâneas. Teto teórico com os defaults: 2
+  req/s — como a latência do portal raramente fica abaixo de 1 s, a
+  vazão medida não mudou.
+- `resultado_do_item(pacing=...)` mantido por compatibilidade; o motor
+  não passa mais `False`.
+
 ## [1.0.0] — 2026-09-08
 
 Declara o contrato. Sem mudança de comportamento em relação à 0.4.4 — o

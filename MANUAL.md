@@ -23,6 +23,7 @@ ver [README.md](README.md). Tudo que está documentado aqui é **contrato**
 
 ```python
 Motor(*, config: Config = Config(), user_agent: str = ..., progresso=None,
+     cancelado: threading.Event | None = None,
      base: str = BASE, base_pncp: str = BASE_PNCP)
 ```
 
@@ -35,6 +36,7 @@ estado adaptativo (bloqueios/sucessos recentes, pacing, dedup de avisos)
 | `config` | Limiares de resiliência. Ver [Config](#config). |
 | `user_agent` | Enviado em toda requisição. Identifique seu sistema — o PNCP não exige, mas ajuda a instituição a saber quem está batendo na API dela. |
 | `progresso` | `callable(str)` opcional, chamado a cada ponto natural da coleta (contratação processada, retry em andamento). Levantar `SyncCancelado` de dentro dele interrompe a coleta no próximo ponto de checagem — não no meio de uma requisição em voo. **Precisa ser thread-safe**: `itens_e_resultados` busca resultados em paralelo, e retries de requisições concorrentes chamam `progresso` de threads diferentes ao mesmo tempo. |
+| `cancelado` | `threading.Event` opcional. Acionado, interrompe a coleta antes da próxima requisição e **acorda na hora** qualquer espera de backoff/`Retry-After` em andamento, levantando `SyncCancelado`. É o caminho mais rápido de parar: o `progresso` fica silenciado pelo agrupamento de avisos repetidos durante um storm, e por ele a parada pode demorar minutos. Ver [Cancelamento cooperativo](#cancelamento-cooperativo). |
 | `base` / `base_pncp` | URLs base — normalmente não precisam mudar; existem pra testes/mocks. |
 
 ### `contratacoes(codigo_ibge, inicio, fim) -> Iterator[Contratacao]`
@@ -143,7 +145,8 @@ medidos contra o PNCP real como default.
 | `tentativas_padrao` | `5` | Tentativas por requisição em condição normal. |
 | `tentativas_curtas` | `2` | Tentativas quando um storm já está confirmado. |
 | `timeouts` | `(30,45,60,75,90)` | Timeout de cada tentativa sucessiva. |
-| `intervalo_min` | `0.5` (s) | Pacing mínimo entre requisições sequenciais. |
+| `intervalo_min` | `0.5` (s) | Intervalo mínimo entre requisições ao portal — vale também entre as threads em paralelo (é por host, não por conexão). |
+| `retry_after_teto` | `120` (s) | Teto do que o portal pede em `Retry-After` (429 e 503). |
 | `falhas_consecutivas_limite` | `5` | Falhas seguidas a partir das quais o disjuntor passa a olhar o tempo sem sucesso. |
 | `sem_sucesso_limite` | `600` (s) | Combinado com o limite acima, quando o disjuntor desiste da fase (falha lenta). |
 | `falhas_seguidas_teto` | `40` | Teto absoluto: desiste mesmo com o relógio aberto. Cobre a falha barata (escada curta durante storm), em que só o tempo deixaria mastigar a fila inteira. |
@@ -267,18 +270,38 @@ registra o que falhou pra tentar de novo na próxima passada.
 
 ```python
 cancelado = threading.Event()
-
-def progresso(msg):
-    print(msg)
-    if cancelado.is_set():
-        raise SyncCancelado()
-
-motor = Motor(progresso=progresso)
+motor = Motor(progresso=print, cancelado=cancelado)
+# ... de outra thread (botão "Parar", sinal do SO):
+cancelado.set()
 ```
 
-A parada acontece no próximo ponto de checagem (início de item/
-contratação, ou entre tentativas de retry) — não no meio de uma
-requisição em voo.
+A parada acontece antes da próxima requisição, ou no meio de uma espera
+de backoff/`Retry-After` (a espera acorda na hora) — nunca no meio de
+uma requisição em voo; o `SyncCancelado` sai do método que estava sendo
+iterado. Beacon (informar) e token (parar) são coisas separadas de
+propósito: o beacon pode ficar em silêncio dentro da janela de um aviso
+repetido, o token não.
+
+A forma antiga — levantar `SyncCancelado` de dentro do `progresso` —
+continua valendo; só é mais lenta num storm.
+
+### Logging (diagnóstico, opcional)
+
+O motor escreve no logger `motor_pncp` e, por padrão, não emite nada
+(`NullHandler`). Ligue quando quiser contar tentativas, status e latência
+por requisição:
+
+```python
+import logging
+logging.basicConfig(level=logging.WARNING)
+logging.getLogger("motor_pncp").setLevel(logging.DEBUG)
+```
+
+`DEBUG`: uma linha por requisição bem-sucedida (`GET /caminho status=200
+tentativa=1 0.84s`) e por retry (`retry /caminho tentativa=2
+causa=http503 espera=3.1s`). `WARNING`: uma linha quando as tentativas
+se esgotam. O callback `progresso` continua sendo o canal pra UI; o log
+é pra diagnóstico e métricas.
 
 ### Disjuntor: falha ≠ ausência
 

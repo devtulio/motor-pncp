@@ -6,6 +6,8 @@ sucesso) e devolve registros tipados que embrulham o JSON cru do PNCP.
 Não tem opinião sobre onde os dados vão parar — isso é problema de quem
 consome. Ver README.md.
 """
+import logging
+
 from .configuracao import Config
 from .dominio import (
     DATA_INICIO_PCA,
@@ -30,5 +32,10 @@ __all__ = [
     "TermoAditivo", "Orgao",
 ]
 
+# biblioteca não configura logging: só declara o logger e cala por padrão
+# (HOWTO oficial). Quem consome liga com
+# `logging.getLogger("motor_pncp").setLevel(logging.DEBUG)` + um handler.
+logging.getLogger("motor_pncp").addHandler(logging.NullHandler())
+
 # fonte única da versão — pyproject.toml lê daqui (RELEASING.md §5)
-__version__ = "1.0.0"
+__version__ = "1.1.0"

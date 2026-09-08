@@ -59,14 +59,22 @@ class Motor:
     silêncio indistinguíveis de travamento. Levantar `SyncCancelado` de
     dentro dele interrompe a coleta no próximo ponto de checagem (não no
     meio de uma requisição em voo).
+
+    `cancelado`, se passado, é um `threading.Event`: acioná-lo interrompe
+    a coleta antes da próxima requisição e acorda na hora qualquer espera
+    de backoff/`Retry-After` em andamento — o beacon `progresso` não
+    chega nesses trechos (fica silenciado pelo agrupamento de avisos
+    repetidos), então a parada por ele pode demorar minutos num storm.
+    Os dois mecanismos convivem; este é o mais rápido.
     """
 
     def __init__(self, *, config: Config = Config(), user_agent=USER_AGENT_PADRAO,
-                 progresso=None, base=BASE, base_pncp=BASE_PNCP):
+                 progresso=None, cancelado=None, base=BASE, base_pncp=BASE_PNCP):
         self._config = config
         self._adaptativo = Adaptativo(config)
         self._cliente = Cliente(self._adaptativo, config=config,
-                                user_agent=user_agent, progresso=progresso)
+                                user_agent=user_agent, progresso=progresso,
+                                cancelado=cancelado)
         self._base = base
         self._base_pncp = base_pncp
 
@@ -197,7 +205,7 @@ class Motor:
             nonlocal falhas
             try:
                 d = self._cliente.get(self._base, "/v1/contratacoes/atualizacao",
-                                      params, pacing=conexoes <= 1, modo_404="retry")
+                                      params, modo_404="retry")
             except PncpErro:
                 falhas += 1
                 return 0
@@ -289,7 +297,11 @@ class Motor:
 
     def resultado_do_item(self, cnpj, ano, sequencial, numero_item, pacing=True):
         """`Resultado` homologado de um item: vencedor e valor unitário
-        fechado, ou `None` se o item ainda não tem resultado."""
+        fechado, ou `None` se o item ainda não tem resultado.
+
+        `pacing=False` desliga o intervalo mínimo só nesta chamada — o
+        motor não usa mais isso (o pacing vale também em paralelo); o
+        parâmetro fica por compatibilidade."""
         lote = self._cliente.get(
             self._base_pncp,
             f"/v1/orgaos/{cnpj}/compras/{ano}/{sequencial}/itens/"
@@ -351,13 +363,11 @@ class Motor:
                     # paralelo
                     conexoes = min(self._adaptativo.paralelismo_atual(),
                                   len(com_resultado))
-                    paralelo = conexoes > 1
                     ex = concurrent.futures.ThreadPoolExecutor(conexoes)
                     try:
                         futuros = {
                             ex.submit(self.resultado_do_item, c["orgao_cnpj"],
-                                     c["ano"], c["sequencial"],
-                                     item.numero_item, not paralelo):
+                                     c["ano"], c["sequencial"], item.numero_item):
                                 item.numero_item
                             for item in com_resultado}
                         for f in concurrent.futures.as_completed(futuros):

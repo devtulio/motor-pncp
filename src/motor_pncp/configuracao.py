@@ -36,8 +36,14 @@ class Config:
     falha."""
 
     intervalo_min: float = 0.5
-    """Segundos mínimos entre requisições sequenciais (pacing) — o PNCP
-    tem throttling agressivo."""
+    """Segundos mínimos entre requisições ao portal (pacing), valendo
+    também entre as threads em paralelo — o PNCP tem throttling
+    agressivo, e o intervalo é por host, não por conexão."""
+
+    retry_after_teto: float = 120
+    """Teto em segundos para o que o portal pede em `Retry-After` (429 e
+    503). Acima disso a espera é cortada: uma thread não pode ficar muda
+    por uma hora porque o header mandou."""
 
     falhas_consecutivas_limite: int = 5
     """Nº de falhas seguidas a partir do qual o disjuntor passa a olhar
