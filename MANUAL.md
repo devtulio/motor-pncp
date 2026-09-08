@@ -14,6 +14,7 @@ ver [README.md](README.md). Tudo que está documentado aqui é **contrato**
 - [Exceções](#exceções)
 - [Helpers de domínio](#helpers-de-domínio)
 - [Padrões de uso](#padrões-de-uso)
+- [Armadilhas do dado](#armadilhas-do-dado)
 - [Diagnóstico ao vivo](#diagnóstico-ao-vivo)
 
 ---
@@ -286,6 +287,78 @@ que já foi gerado antes já foi processado por você** — mas a fase não
 terminou. Não avance sua marca d'água de sincronização (`last_sync_*`)
 para essa fase; refaça a mesma janela na próxima passada. Avançar sobre
 uma falha parcial abre um buraco permanente no acervo.
+
+---
+
+## Armadilhas do dado
+
+O motor devolve o dado como o PNCP manda e não interpreta — de propósito.
+Mas quem interpreta tropeça sempre nos mesmos lugares. Cada item abaixo é
+um erro que produz **resultado bem-formado e errado**: o total fecha, o
+relatório sai bonito, e a conclusão descreve outra coisa.
+
+### `niFornecedor` carrega CNPJ *ou* CPF
+
+`Resultado.fornecedor_ni` vem com 14 dígitos (CNPJ) **ou** 11 (CPF) — pessoa
+física vence licitação com frequência (agricultura familiar, serviços
+avulsos). Formatar tudo como CNPJ transforma um CPF em documento adulterado
+saindo em relatório oficial. Decida pelo tamanho: 14 → `00.000.000/0000-00`,
+11 → `000.000.000-00`, qualquer outro → deixe como veio (identificador
+estrangeiro ou ausente). Antes de formatar qualquer identificador de API
+pública, conte os tamanhos distintos no seu acervo.
+
+### Unidade de terceiro pendurada no CNPJ de outro ente
+
+O PNCP organiza contratação em **órgão** (`Contratacao.orgao_cnpj`) e
+**unidade** (`Contratacao.unidade_nome`, `raw["unidadeOrgao"]`). Sob o CNPJ
+de um ente aparecem unidades que pertencem a outros — um fundo, uma
+prefeitura, um hospital — e o `codigoIbge` da unidade é o município **da
+unidade**, não do órgão. Somar por CNPJ (ou filtrar por IBGE) sem olhar a
+unidade atribui a um ente compras que não são dele. Antes de agregar,
+liste as unidades distintas do CNPJ e decida o que entra. Dois cuidados:
+não filtre pelo texto do objeto (órgão grande compra de tudo pra uso
+interno), e confira os nomes reais das unidades antes de excluir por regra
+(departamento interno com nome genérico não é ente estranho).
+
+### Prefeitura, Câmara, autarquia e fundo são CNPJs distintos
+
+Num município convivem vários entes, cada um com CNPJ, orçamento, plano
+(`pca`) e prestação de contas próprios. Escopar "por município" e cruzar
+tudo junto compara o plano de um com a execução de outro — interseção
+zero e um indicador sem significado. Qualquer confronto de duas fontes
+(planejado × executado, previsto × realizado) tem que casar pelo CNPJ que
+publica **os dois lados**; confira no dado real quais CNPJs aparecem de
+cada lado antes de construir. E trate ausência como achado: órgão que
+executou sem plano publicado é uma linha "não publicou o PCA" (obrigatório
+pelo art. 12, VII, da Lei 14.133/2021), não N acusações derivadas.
+
+### Modalidade não é amparo legal
+
+`Contratacao.modalidade_id == 8` ("Dispensa") diz qual foi o procedimento,
+não qual teto se aplica. Quem define se há limite de valor, e qual, é
+`raw["amparoLegal"]`: art. 75, II (compras e serviços comuns — o teto
+usual), art. 75, I (obras — teto próprio, o dobro), os demais incisos e
+outras leis (emergência, licitação deserta, agricultura familiar via PNAE —
+dispensa pela natureza do objeto, **sem** teto contra o qual comparar).
+Um indicador de conformidade que filtra por modalidade acusa como
+irregular exatamente a compra grande e legítima. Classifique pelo
+dispositivo invocado, nunca pelo rótulo — e valide contra o acervo real:
+fixture de teste nasce com o amparo que o autor imaginou.
+
+### Falha ≠ ausência (o motor já protege; não desfaça)
+
+429, 5xx, timeout, corpo ilegível, página vazia no meio de uma listagem —
+o motor trata todos como falha e levanta `PncpErro`, nunca como "não tem
+dado". Do seu lado, o equivalente: não avance marca d'água sobre falha
+parcial, não carimbe uma contratação como concluída depois de
+`ItensIndisponiveis`, e não use `None` de `resultado_do_item` como prova
+de que não há resultado se a chamada falhou antes.
+
+### Volume se lê no envelope
+
+Pra saber quantos registros uma consulta tem, use `contar_contratacoes`
+(lê `totalRegistros`), nunca pagine tudo pra contar — em município grande
+isso não termina, e o rate-limit do portal chega antes.
 
 ---
 
