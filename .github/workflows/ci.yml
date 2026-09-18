@@ -4,6 +4,12 @@ on:
   push:
     branches: [master]
   pull_request:
+  schedule:
+    # vulnerabilidade nova aparece sem ninguém commitar nada
+    - cron: "0 9 * * 1"
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -25,3 +31,18 @@ jobs:
       - run: bandit -q -c pyproject.toml -r src
 
       - run: pytest -q
+
+  auditoria:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - run: pip install -e ".[dev]" pip-audit
+
+      # o pacote em si é pulado (editável, sem dependência de execução);
+      # o que se audita é o ferramental que roda no CI
+      - run: pip-audit --skip-editable

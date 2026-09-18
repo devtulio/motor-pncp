@@ -2,6 +2,23 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
+## [1.2.1] — 2026-09-18
+
+Checagem de vulnerabilidade do repositório. Resultado: `pip-audit` sem
+achados no ambiente de desenvolvimento (o pacote não tem dependência de
+execução), `bandit` limpo, nenhum segredo no histórico, nenhuma chamada
+perigosa (`eval`/`exec`/`pickle`/`subprocess`/TLS desligado) em `src/`.
+
+### Security
+- O caminho da URL passa a ser escapado (`urllib.parse.quote`, mantendo
+  `/`): um `cnpj`/`sequencial` com `?`, `#` ou espaço não reescreve mais
+  a requisição. Host fixo, sem SSRF — endurecimento de entrada. Chamadas
+  com valores válidos ficam idênticas.
+
+### Added (CI; sem efeito na API)
+- Job `pip-audit` no CI (a cada push e semanalmente) e
+  `.github/dependabot.yml` para as GitHub Actions e o ferramental `dev`.
+
 ## [1.2.0] — 2026-09-08
 
 Fecha os itens de design da revisão contra a literatura.

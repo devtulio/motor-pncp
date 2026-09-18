@@ -186,7 +186,12 @@ class Cliente:
         """
         if tentativas is None:
             tentativas = self._adaptativo.tentativas_atual()
-        url = f"{url_base}{caminho}?{urllib.parse.urlencode(params)}"
+        # `caminho` carrega cnpj/ano/sequencial vindos de quem consome (às
+        # vezes digitados por um usuário final): escapar tudo menos "/"
+        # impede que um "?", "#" ou espaço reescreva a requisição. O host é
+        # fixo, então não há SSRF — é só não deixar a entrada mudar a rota.
+        url = (f"{url_base}{urllib.parse.quote(caminho, safe='/')}"
+               f"?{urllib.parse.urlencode(params)}")
 
         def retentar(chave, mensagem, espera):
             # caminho comum de toda falha transitória: conta como bloqueio

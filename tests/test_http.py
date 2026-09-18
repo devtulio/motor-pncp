@@ -356,3 +356,17 @@ def test_logger_da_biblioteca_tem_nullhandler():
     import motor_pncp  # noqa: F401
     assert any(isinstance(h, logging.NullHandler)
                for h in logging.getLogger("motor_pncp").handlers)
+
+
+def test_caminho_e_escapado_mas_barras_ficam(monkeypatch):
+    """Entrada de quem consome (cnpj digitado) nao pode reescrever a rota."""
+    import urllib.request
+    vistas = []
+
+    def fake(req, timeout=None):
+        vistas.append(req.full_url)
+        return resposta_json({"ok": True})
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake)
+    cliente().get("https://x", "/v1/orgaos/123?x=1#frag /itens", {"pagina": 1})
+    assert vistas == ["https://x/v1/orgaos/123%3Fx%3D1%23frag%20/itens?pagina=1"]

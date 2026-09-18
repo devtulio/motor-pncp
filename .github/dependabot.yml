@@ -1,0 +1,12 @@
+version: 2
+updates:
+  # o pacote não tem dependência de execução; isto cobre o ferramental
+  # de desenvolvimento (pytest, ruff, bandit) e as actions do CI
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
