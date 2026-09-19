@@ -2,6 +2,33 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
+## [1.3.0] — 2026-09-19
+
+Pedido de um consumidor, medido no histórico de sincronização dele: de
+102 erros de fase, em 40 falhou **1 consulta de 26** e em 25 falharam
+**2 de 26** — quase todos HTTP 429 do WAF do portal, que libera sozinho
+em ~15 s. O erro dizia *quantas* consultas falharam, não *quais*; a
+única saída era refazer a janela inteira.
+
+### Added
+- **Repescagem:** as fases em lote (`contratacoes`, `contratos`, `atas`,
+  `pca`) repetem sozinhas, uma vez, as consultas que falharam, depois de
+  `Config.repescagem_pausa` segundos (default 30). É retry de
+  transporte: a lista de consultas é a mesma, nada é inferido, e uma
+  coleta sem falha não espera nada.
+- `PncpErro.consultas_falhas`: lista de `(rótulo, params)` que falharam
+  ou nem foram tentadas (quando o disjuntor para cedo). Vazia em erros
+  que não vêm de fase em lote.
+- `Motor.refazer(erro)`: gera os registros tipados só das consultas em
+  `erro.consultas_falhas`. Se algo seguir falhando, levanta outro
+  `PncpErro` com o que sobrou.
+- `Config.repescagem_pausa`.
+
+### Changed
+- Mensagem do erro de fase: "N de M consultas falharam (mesmo depois de
+  repetidas)" e, no disjuntor, "N consultas por fazer". Texto de
+  mensagem não é contrato (RELEASING §1).
+
 ## [1.2.1] — 2026-09-18
 
 Checagem de vulnerabilidade do repositório. Resultado: `pip-audit` sem

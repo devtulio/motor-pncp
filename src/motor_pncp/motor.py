@@ -43,6 +43,15 @@ __all__ = [
 ]
 
 
+class _Rotulo(str):
+    """Rótulo de consulta que lembra a posição dela no lote."""
+
+    def __new__(cls, texto, indice):
+        self = super().__new__(cls, texto)
+        self.indice = indice
+        return self
+
+
 class Motor:
     """Uma coleta do PNCP.
 
@@ -103,48 +112,105 @@ class Motor:
 
     # ── infraestrutura comum das fases baixadas em paralelo com disjuntor ─
 
-    def _baixar_com_disjuntor(self, caminho, consultas, *, rotulo_fase,
+    def _baixar_com_disjuntor(self, caminho, consultas, *, rotulo_fase, tipo,
                               tamanho_pagina=500):
         """Baixa uma lista de `(rótulo, params)` com disjuntor e beacon de
-        progresso, gerando os registros crus conforme chegam.
+        progresso, gerando os registros (já embrulhados em `tipo`)
+        conforme chegam.
 
         Compartilhada por toda fase que baixa uma lista fixa de consultas
-        em paralelo (contratações, contratos, atas, PCA) — a única
-        diferença entre elas é como cada uma monta `consultas` e em que
-        tipo embrulha o resultado; a resiliência (disjuntor, mensagens de
-        falha, fechamento do gerador) é uma preocupação só, não uma por
-        fase. Levanta `PncpErro` — cedo, se o disjuntor desistir da fase,
-        ou no final, se alguma consulta falhou sem disparar o disjuntor —
-        sempre preservando o que já foi gerado antes disso (falha ≠
-        ausência; não avance sua marca d'água sobre uma falha parcial).
+        (contratações, contratos, atas, PCA) — a única diferença entre
+        elas é como cada uma monta `consultas` e em que tipo embrulha o
+        resultado; a resiliência é uma preocupação só, não uma por fase.
+
+        **Repescagem:** as consultas que falharam na primeira passada são
+        repetidas UMA vez ao fim do lote, depois de
+        `Config.repescagem_pausa` segundos. O caso medido que motivou: o
+        WAF do portal barra 1 ou 2 consultas de 26 com 429 e libera
+        sozinho em ~15s — sem isto, quem consome refazia a janela inteira
+        por causa de uma consulta. É retry de transporte, não
+        orquestração: a lista de consultas é a mesma, nada é inferido.
+
+        Levanta `PncpErro` — cedo, se o disjuntor desistir da fase, ou no
+        fim, se alguma consulta seguiu falhando depois da repescagem. Em
+        ambos os casos o erro carrega `consultas_falhas` (as que falharam
+        E as que nem foram tentadas), pra `Motor.refazer(erro)` repetir só
+        elas. O que já foi gerado antes quem consome já processou (falha
+        ≠ ausência; não avance sua marca d'água sobre uma falha parcial).
         """
         disjuntor = Disjuntor(self._config)
-        falhas = []
-        gerador = self._cliente.baixar(self._base, caminho, consultas, tamanho_pagina)
-        try:
-            for feitas, (rotulo, lote, erro) in enumerate(gerador, 1):
+        total = len(consultas)
+        # rótulo não é único (o mesmo nome de modalidade se repete a cada
+        # janela); o índice viaja junto pra saber QUAL consulta voltou,
+        # sem mudar o protocolo (rótulo, lote, erro) de `Cliente.baixar`
+        pendentes = dict(enumerate(consultas))
+        primeiro_erro = None
+        feitas = 0
+
+        def erro_final(mensagem):
+            erro = PncpErro(mensagem)
+            erro.consultas_falhas = [pendentes[i] for i in sorted(pendentes)]
+            erro._refazer = (caminho, tamanho_pagina, rotulo_fase, tipo)
+            return erro
+
+        for passada in (1, 2):
+            if passada == 2:
                 self._cliente.avisar_progresso(
-                    f"{rotulo_fase} — {rotulo} ({feitas}/{len(consultas)})…")
-                if erro:
-                    falhas.append(f"{rotulo}: {erro}")
-                    if disjuntor.falha():
-                        raise PncpErro(
-                            f"{rotulo_fase}: parado após {disjuntor.seguidas} "
-                            f"falhas seguidas e {disjuntor.mudo_ha}min sem "
-                            f"nenhuma resposta boa — "
-                            f"{len(consultas) - feitas} consultas não "
-                            f"tentadas — {falhas[0]}")
-                    continue
-                disjuntor.sucesso()
-                yield from lote
-        finally:
-            gerador.close()
-        if falhas:
-            raise PncpErro(f"{rotulo_fase}: {len(falhas)} de {len(consultas)} "
-                           f"consultas falharam — {falhas[0]}")
+                    f"{rotulo_fase} — repetindo {len(pendentes)} consulta(s) "
+                    f"que falharam, em {self._config.repescagem_pausa:.0f}s…")
+                self._cliente._dormir(self._config.repescagem_pausa)
+            lote_atual = [(_Rotulo(r, i), p) for i, (r, p) in pendentes.items()]
+            gerador = self._cliente.baixar(self._base, caminho, lote_atual,
+                                           tamanho_pagina)
+            try:
+                for rotulo, lote, erro in gerador:
+                    if passada == 1:
+                        feitas += 1
+                    self._cliente.avisar_progresso(
+                        f"{rotulo_fase} — {rotulo} ({feitas}/{total})…")
+                    if erro:
+                        primeiro_erro = primeiro_erro or f"{rotulo}: {erro}"
+                        if disjuntor.falha():
+                            raise erro_final(
+                                f"{rotulo_fase}: parado após {disjuntor.seguidas} "
+                                f"falhas seguidas e {disjuntor.mudo_ha}min sem "
+                                f"nenhuma resposta boa — {len(pendentes)} "
+                                f"consultas por fazer — {primeiro_erro}")
+                        continue
+                    disjuntor.sucesso()
+                    pendentes.pop(getattr(rotulo, "indice", None), None)
+                    for raw in lote:
+                        yield tipo(raw)
+            finally:
+                gerador.close()
+            if not pendentes:
+                return
+        raise erro_final(
+            f"{rotulo_fase}: {len(pendentes)} de {total} consultas falharam "
+            f"(mesmo depois de repetidas) — {primeiro_erro}")
+
+    def refazer(self, erro: PncpErro) -> Iterator:
+        """Repete só as consultas que falharam numa fase em lote.
+
+        `erro` é o `PncpErro` levantado por `contratacoes`, `contratos`,
+        `atas` ou `pca`. Gera os mesmos registros tipados daquela fase,
+        só das consultas em `erro.consultas_falhas` — em vez de refazer a
+        janela inteira por causa de uma consulta. Se alguma seguir
+        falhando, levanta outro `PncpErro`, com as que sobraram; pode
+        chamar de novo com ele. Só avance sua marca d'água quando um
+        `refazer` terminar sem erro.
+        """
+        if not getattr(erro, "_refazer", None):
+            raise ValueError(
+                "este erro não veio de uma fase em lote do Motor "
+                "(contratacoes/contratos/atas/pca) — não há o que refazer")
+        caminho, tamanho_pagina, rotulo_fase, tipo = erro._refazer
+        yield from self._baixar_com_disjuntor(
+            caminho, list(erro.consultas_falhas), rotulo_fase=rotulo_fase,
+            tipo=tipo, tamanho_pagina=tamanho_pagina)
 
     def _janela_generica(self, caminho, params_extra, inicio, fim, *, rotulo_fase,
-                         chaves_data=("dataInicial", "dataFinal"),
+                         tipo, chaves_data=("dataInicial", "dataFinal"),
                          tamanho_pagina=500):
         """Monta as consultas de uma fase que consulta por CNPJ + janela
         de datas, sem o loop de modalidade de `contratacoes` (contratos,
@@ -153,7 +219,7 @@ class Motor:
         consultas = [(amd(a), {**params_extra, ini_chave: amd(a), fim_chave: amd(b)})
                     for a, b in janelas(inicio, fim)]
         yield from self._baixar_com_disjuntor(caminho, consultas,
-                                              rotulo_fase=rotulo_fase,
+                                              rotulo_fase=rotulo_fase, tipo=tipo,
                                               tamanho_pagina=tamanho_pagina)
 
     # ── contratações ─────────────────────────────────────────────────────
@@ -179,10 +245,9 @@ class Motor:
                              "codigoMunicipioIbge": codigo_ibge})
                     for codigo, nome in MODALIDADES.items()
                     for a, b in janelas(inicio, fim)]
-        for raw in self._baixar_com_disjuntor("/v1/contratacoes/atualizacao",
-                                              consultas, rotulo_fase="Contratações",
-                                              tamanho_pagina=50):
-            yield Contratacao(raw)
+        yield from self._baixar_com_disjuntor(
+            "/v1/contratacoes/atualizacao", consultas, rotulo_fase="Contratações",
+            tipo=Contratacao, tamanho_pagina=50)
 
     def contar_contratacoes(self, codigo_ibge, inicio: date = DATA_INICIO_PNCP,
                             fim: date | None = None) -> dict:
@@ -226,18 +291,16 @@ class Motor:
     def contratos(self, cnpj, inicio: date, fim: date) -> Iterator[Contrato]:
         """Gera `Contrato` de um órgão atualizados na janela — a API não
         filtra por município, só por CNPJ."""
-        for raw in self._janela_generica("/v1/contratos/atualizacao",
+        yield from self._janela_generica("/v1/contratos/atualizacao",
                                          {"cnpjOrgao": cnpj}, inicio, fim,
-                                         rotulo_fase="Contratos"):
-            yield Contrato(raw)
+                                         rotulo_fase="Contratos", tipo=Contrato)
 
     def atas(self, cnpj, inicio: date, fim: date) -> Iterator[Ata]:
         """Gera `Ata` de registro de preços de um órgão atualizadas na
         janela."""
-        for raw in self._janela_generica("/v1/atas/atualizacao",
+        yield from self._janela_generica("/v1/atas/atualizacao",
                                          {"cnpj": cnpj}, inicio, fim,
-                                         rotulo_fase="Atas"):
-            yield Ata(raw)
+                                         rotulo_fase="Atas", tipo=Ata)
 
     def pca(self, cnpj, inicio: date, fim: date) -> Iterator[PlanoPca]:
         """Gera `PlanoPca` (Plano de Contratações Anual) de um órgão
@@ -250,10 +313,10 @@ class Motor:
         inicio = max(inicio, DATA_INICIO_PCA)
         if inicio > fim:
             return
-        for raw in self._janela_generica("/v1/pca/atualizacao", {"cnpj": cnpj},
+        yield from self._janela_generica("/v1/pca/atualizacao", {"cnpj": cnpj},
                                          inicio, fim, rotulo_fase="PCA",
-                                         chaves_data=("dataInicio", "dataFim")):
-            yield PlanoPca(raw)
+                                         tipo=PlanoPca,
+                                         chaves_data=("dataInicio", "dataFim"))
 
     # ── órgãos ───────────────────────────────────────────────────────────
 

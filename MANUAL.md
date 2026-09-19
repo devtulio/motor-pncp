@@ -49,6 +49,16 @@ antes disso quem consome já processou**; não avance sua marca d'água de
 sincronização se isso acontecer (falha ≠ ausência). Se o disjuntor
 decidir que a fase morreu, as consultas restantes nem são tentadas.
 
+### `refazer(erro) -> Iterator`
+
+Repete só as consultas que falharam numa fase em lote. `erro` é o
+`PncpErro` levantado por `contratacoes`, `contratos`, `atas` ou `pca`;
+gera os mesmos registros tipados daquela fase, só das consultas em
+`erro.consultas_falhas`. Se alguma seguir falhando, levanta outro
+`PncpErro` com as que sobraram — pode chamar de novo com ele. Levanta
+`ValueError` se o erro não veio de uma fase em lote. Ver
+[Falha parcial](#falha-parcial-repita-só-o-que-falhou).
+
 ### `sonda() -> float`
 
 Uma requisição barata em `/v1/atas` (vigência de hoje, 10 registros, o
@@ -156,6 +166,7 @@ medidos contra o PNCP real como default.
 | `falhas_consecutivas_limite` | `5` | Falhas seguidas a partir das quais o disjuntor passa a olhar o tempo sem sucesso. |
 | `sem_sucesso_limite` | `600` (s) | Combinado com o limite acima, quando o disjuntor desiste da fase (falha lenta). |
 | `falhas_seguidas_teto` | `40` | Teto absoluto: desiste mesmo com o relógio aberto. Cobre a falha barata (escada curta durante storm), em que só o tempo deixaria mastigar a fila inteira. |
+| `repescagem_pausa` | `30` (s) | Espera antes de repetir, uma única vez, as consultas que falharam numa fase em lote. Só corre quando houve falha. |
 | `janela_operacional` | `300` (s) | Avisos de retry da mesma causa ficam agrupados dentro desta janela. |
 
 ```python
@@ -196,7 +207,7 @@ precisa de um `datetime` de verdade (ver abaixo).
 
 | Exceção | Quando |
 |---|---|
-| `PncpErro` | Falha de comunicação após esgotar as tentativas, ou fase abortada pelo disjuntor. Base de todas as outras. |
+| `PncpErro` | Falha de comunicação após esgotar as tentativas, ou fase abortada pelo disjuntor. Base de todas as outras. Numa fase em lote traz `consultas_falhas` — lista de `(rótulo, params)` que falharam ou nem foram tentadas — pra `Motor.refazer(erro)`; nos demais casos a lista é vazia. |
 | `SyncCancelado` | Você levantou de dentro do `progresso` pra interromper a coleta. **Não herda de `PncpErro`** — se herdasse, um `except PncpErro` engoliria o cancelamento. |
 | `ItensIndisponiveis` | 404 numa listagem de UM registro específico (itens de uma contratação, termos de um contrato). Não é "sem registro" — é o portal ocupado; não marque como concluído. |
 
@@ -308,6 +319,36 @@ tentativa=1 0.84s`) e por retry (`retry /caminho tentativa=2
 causa=http503 espera=3.1s`). `WARNING`: uma linha quando as tentativas
 se esgotam. O callback `progresso` continua sendo o canal pra UI; o log
 é pra diagnóstico e métricas.
+
+### Falha parcial: repita só o que falhou
+
+Uma fase em lote são dezenas de consultas independentes (13 modalidades
+× janelas). O motor já repete sozinho, uma vez, as que falharam
+(repescagem). Se ainda assim sobrar falha, não refaça a janela inteira:
+
+```python
+try:
+    for c in motor.contratacoes(ibge, inicio, fim):
+        gravar(c)
+except PncpErro as erro:
+    for _ in range(2):                      # quantas vezes insistir é decisão sua
+        if not erro.consultas_falhas:
+            raise                           # erro de outra natureza
+        time.sleep(60)
+        try:
+            for c in motor.refazer(erro):
+                gravar(c)
+            break                           # agora sim a janela está completa
+        except PncpErro as de_novo:
+            erro = de_novo
+    else:
+        raise erro                          # não avance a marca d'água
+avancar_marca_dagua()
+```
+
+O que já foi gerado antes do erro você já gravou; `refazer` só traz o
+que faltou. A regra de sempre continua: marca d'água só avança quando
+uma passada termina sem erro.
 
 ### O "disjuntor" não é um circuit breaker
 

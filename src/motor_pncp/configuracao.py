@@ -67,6 +67,12 @@ class Config:
     tempo já esperava — preserva a tolerância a tropeço isolado, só corta
     o caso em que a contagem passa MUITO disso."""
 
+    repescagem_pausa: float = 30
+    """Segundos de espera antes de repetir, uma única vez, as consultas
+    que falharam numa fase em lote. O bloqueio do WAF do portal (429)
+    dura ~15s e libera sozinho; 30s dá folga sem alongar uma coleta que
+    já deu certo (só espera quando houve falha)."""
+
     janela_operacional: float = 300
     """Segundos: avisos de retry da MESMA causa (ex.: HTTP 503) em
     requisições diferentes ficam em silêncio dentro desta janela depois

@@ -74,7 +74,7 @@ Instalação em cada sistema consumidor — **pinada numa tag**, nunca em
 sistema sem você pedir):
 
 ```bash
-pip install "git+https://github.com/devtulio/motor-pncp.git@v1.2.1"
+pip install "git+https://github.com/devtulio/motor-pncp.git@v1.3.0"
 ```
 
 Em modo editável durante o desenvolvimento do próprio motor:
