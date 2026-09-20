@@ -476,11 +476,11 @@ lógica; só uma chamada real prova que o envelope ainda se chama
 
 O resumo separa por host, porque eles caem independentemente:
 
-| Host | Fases | 2026-09-06 | 2026-09-07 | 2026-09-08 |
-|---|---|---|---|---|
-| `api/consulta` | `sonda`, `contar_contratacoes`, `contratacoes`, `contratos`, `atas`, `pca` | 5/5 ok | 6/6 ok — 649 contratações em várias páginas, `contar` = baixadas | 6/6 ok (v1.1.0, 1.1.1 e 1.2.0) — portal caiu à tarde (504/503/timeout por ~3h) e cada smoke precisou de 2ª rodada |
-| `api/pncp` | `consultar_orgao`, `itens_e_resultados` (itens, resultados, termos) | 0/2 — HTTP 503 sustentado há >24h | 2/2 ok | 2/2 ok |
-| Banco Central | `ipca` | ok | ok | ok |
+| Host | Fases | 2026-09-06 | 2026-09-07 | 2026-09-08 | 2026-09-19 |
+|---|---|---|---|---|---|
+| `api/consulta` | `sonda`, `contar_contratacoes`, `contratacoes`, `contratos`, `atas`, `pca` | 5/5 ok | 6/6 ok — 649 contratações em várias páginas, `contar` = baixadas | 6/6 ok (v1.1.0, 1.1.1 e 1.2.0) — portal caiu à tarde (504/503/timeout por ~3h) e cada smoke precisou de 2ª rodada | ok (v1.3.0) — 175 contratações em 34 s, sequencial; com falha provocada, repescagem + `refazer` fecharam os mesmos 175. Em 18/09 (v1.2.1) este host esteve em timeout o dia todo |
+| `api/pncp` | `consultar_orgao`, `itens_e_resultados` (itens, resultados, termos) | 0/2 — HTTP 503 sustentado há >24h | 2/2 ok | 2/2 ok | ok em 18/09 (órgão e itens com o caminho escapado; entrada hostil volta 400) |
+| Banco Central | `ipca` | ok | ok | ok | ok |
 
 Leitura do dia 06: motor íntegro, portal parcialmente fora — sem código
 de retry/timeout que extraia dado de um endpoint que não responde;

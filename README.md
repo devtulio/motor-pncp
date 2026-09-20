@@ -20,9 +20,16 @@ diferentes, e o motor não escolhe por eles.
 Cobertura atual: contratações (`contratacoes`), itens e resultados
 homologados (`itens_e_resultados`), contratos/atas/PCA de um órgão
 (`contratos`/`atas`/`pca`), termos aditivos (`termos_aditivos`), consulta
-de órgão (`consultar_orgao`), IPCA (função `ipca`, fora do `Motor` desde 1.2.0) e um health-check barato do
-portal (`sonda`, 1 requisição, 1 tentativa — pra decidir em segundos se
-vale iniciar uma coleta).
+de órgão (`consultar_orgao`), IPCA (função `ipca`, fora do `Motor` desde
+1.2.0) e um health-check barato do portal (`sonda`, 1 requisição, 1
+tentativa — pra decidir em segundos se vale iniciar uma coleta).
+
+Em volta disso: as fases em lote repetem sozinhas, uma vez, as consultas
+que falharam, e o erro que sobrar diz **quais** foram — `Motor.refazer(erro)`
+busca só elas, em vez da janela inteira. `Motor(cancelado=threading.Event)`
+para a coleta na hora, inclusive no meio de uma espera de retry. O logger
+`motor_pncp` (mudo por padrão) dá tentativas, status e latência por
+requisição. Detalhes no [MANUAL.md](MANUAL.md).
 
 ## Uso
 
@@ -94,11 +101,13 @@ Roda cada fase contra o PNCP real num município e separa por host
 "o motor quebrou ou o portal caiu?" sem abrir código. Não grava nada.
 Sai com código 1 se alguma fase falhou. Ver [MANUAL.md](MANUAL.md#diagnóstico-ao-vivo).
 
-Testes: `pip install -e ".[dev]" && pytest` (85 testes, focados na lógica
-de resiliência — disjuntor, paralelismo/tentativas adaptativos, dedup de
-avisos, classificação de erro HTTP, limpeza de thread ao parar cedo).
-`ruff check src tests` e `bandit -q -c pyproject.toml -r src` rodam no CI
-a cada push/PR (Python 3.10 e 3.12).
+Testes: `pip install -e ".[dev]" && pytest` — lógica de resiliência
+(disjuntor, paralelismo/tentativas adaptativos, repescagem, dedup de
+avisos, classificação de erro HTTP, limpeza de thread ao parar cedo),
+testes de propriedade (`janelas`, paginação) e envelopes reais gravados
+do portal em `tests/fixtures/`, que acusam no CI se o schema do PNCP
+mudar. `ruff`, `bandit` e `pip-audit` rodam no CI a cada push/PR e toda
+semana (Python 3.10 e 3.12); Dependabot e secret scanning estão ligados.
 
 ## Princípios que o código segue
 
@@ -116,10 +125,16 @@ Cada um destes virou uma decisão concreta no motor; quem consome herda.
 - **Recuar por proporção.** Paralelismo e nº de tentativas caem pela
   fração de respostas ruins na janela recente, não por contagem
   absoluta, e voltam sozinhos.
+- **Falha parcial não custa a janela inteira.** Uma consulta barrada
+  entre dezenas é repetida sozinha e, se persistir, é nomeada no erro
+  (`consultas_falhas`) pra ser refeita sozinha (`refazer`).
 - **Nunca ficar mudo.** Toda espera de retry avisa (`progresso`), com
   avisos da mesma causa agrupados por janela pra não inundar.
 - **Parar cedo de verdade.** Gerador fechado no meio não espera as
-  requisições já enfileiradas pagarem o orçamento inteiro de retry.
+  requisições já enfileiradas pagarem o orçamento inteiro de retry, e o
+  token `cancelado` acorda qualquer espera de backoff na hora.
+- **Entrada não reescreve a rota.** O caminho da URL é escapado; o host é
+  fixo. Sem dependência de execução, a superfície é a stdlib.
 - **Mock não prova fronteira.** Toda mudança de comportamento é validada
   contra o portal real (`python -m motor_pncp`) antes de virar tag.
 
