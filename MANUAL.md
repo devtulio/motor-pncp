@@ -105,10 +105,11 @@ mesmo que "sem itens" (ver [Exceções](#exceções)).
 
 Resultado homologado de um item — `None` se ainda não tem.
 
-### `itens_e_resultados(contratacoes, *, pendente=None, on_erro=None) -> Iterator[tuple[dict, list[tuple[Item, Resultado | None]]]]`
+### `itens_e_resultados(contratacoes, *, pendente=None, on_erro=None, on_item=None) -> Iterator[tuple[dict, list[tuple[Item, Resultado | None]]]]`
 
 Para cada contratação, busca itens e (em paralelo) os resultados dos que
-têm. Ver [Padrões de uso](#padrões-de-uso) para `pendente`/`on_erro`.
+têm. Ver [Padrões de uso](#padrões-de-uso) para `pendente`, `on_erro` e
+`on_item`.
 
 `contratacoes`: iterável de **dicts seus**, com pelo menos `orgao_cnpj`,
 `ano`, `sequencial` — o motor não impõe tipo aqui porque é você quem sabe
@@ -318,6 +319,34 @@ quando uma falha — só desistem da fase inteira via disjuntor (falhas
 seguidas **e** tempo sem sucesso, nunca só contagem — fila grande
 tropeça por ruído normal do portal). `on_erro(item, excecao)` é onde você
 registra o que falhou pra tentar de novo na próxima passada.
+
+### `on_item()` — progresso dentro de uma contratação
+
+O registro de uma contratação só é gerado depois de **todos** os
+resultados dela. Numa compra com centenas de itens e o portal lento, isso
+são dezenas de minutos sem nenhum sinal. `on_item` mostra que a coleta
+anda:
+
+```python
+def on_item(contratacao, feitos, total):
+    mostrar(f"{contratacao['numero']}: {feitos} de {total} resultados")
+
+for c, pares in motor.itens_e_resultados(fila, pendente=pendente, on_item=on_item):
+    gravar(c, pares)
+```
+
+`total` é quantos resultados serão buscados naquela contratação — os
+itens com `temResultado`, depois do filtro `pendente`. A primeira chamada
+vem com `feitos=0`, logo depois da listagem, e as seguintes a cada
+resultado; contratação sem resultado a buscar recebe uma única chamada
+`(0, 0)`. Se a busca de um resultado falhar, a contratação vai pro
+`on_erro` e `feitos` não chega a `total`.
+
+Duas garantias: exceção dentro de `on_item` é engolida e não derruba a
+coleta (exceto `SyncCancelado`, que para tudo); e ele é chamado sempre da
+thread que está iterando o gerador, nunca das threads que buscam os
+resultados — dá pra gravar no banco de dentro dele sem se preocupar com
+conexão por thread.
 
 ### Cancelamento cooperativo
 

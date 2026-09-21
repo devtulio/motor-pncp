@@ -378,8 +378,22 @@ class Motor:
         validos = [r for r in lote if not r.get("dataCancelamento")]
         return Resultado((validos or lote)[0])
 
+    @staticmethod
+    def _avisar_item(on_item, contratacao, feitos, total):
+        """Chama `on_item` como cortesia: o que ele levantar não derruba a
+        coleta, exceto o pedido de parada."""
+        if on_item is None:
+            return
+        try:
+            on_item(contratacao, feitos, total)
+        except SyncCancelado:
+            raise
+        except Exception:
+            pass
+
     def itens_e_resultados(
             self, contratacoes: Iterable[dict], *, pendente=None, on_erro=None,
+            on_item=None,
     ) -> Iterator[tuple[dict, list[tuple[Item, Resultado | None]]]]:
         """Para cada contratação, busca itens e resultados homologados.
 
@@ -408,6 +422,26 @@ class Motor:
         falhas seguidas E tempo sem nenhum sucesso) — uma contratação
         quebrada não pode travar a fila inteira.
 
+        `on_item(contratacao, feitos: int, total: int)`, opcional:
+        progresso DENTRO de uma contratação. `total` é quantos resultados
+        serão buscados nela — os itens com `temResultado`, depois do
+        filtro `pendente`. É chamado uma vez com `feitos=0` logo depois
+        da listagem dos itens (antes da primeira resposta) e de novo a
+        cada resultado que chega, até `feitos == total`. Contratação sem
+        resultado a buscar recebe uma única chamada `(0, 0)`. Existe
+        porque o registro só é gerado depois de TODOS os resultados: numa
+        compra com centenas de itens e o portal lento, isso são dezenas
+        de minutos sem nenhum sinal — indistinguível de travamento.
+        Se a busca de um resultado falhar, a contratação vai pro
+        `on_erro` e `feitos` não chega a `total`.
+
+        Exceção levantada dentro de `on_item` é cortesia, como no
+        `progresso`: é engolida e NÃO derruba a coleta — exceto
+        `SyncCancelado`, que propaga e para tudo. `on_item` é chamado
+        sempre da thread que está iterando este gerador, nunca das
+        threads que buscam os resultados: dá pra gravar no banco de
+        dentro dele sem se preocupar com conexão por thread.
+
         Gera `(contratacao, [(Item, Resultado | None), ...])` — uma
         tupla por contratação, só depois que TODOS os itens dela (e
         resultados, buscados em paralelo) chegaram. Contratação com 404
@@ -426,6 +460,8 @@ class Motor:
                 itens = [item for item in todos if pendente(c, item)]
                 com_resultado = [item for item in itens if item.tem_resultado]
                 resultados = {}
+                total = len(com_resultado)
+                self._avisar_item(on_item, c, 0, total)
                 if com_resultado:
                     # os resultados são independentes entre si: buscar em
                     # paralelo
@@ -438,8 +474,13 @@ class Motor:
                                      c["ano"], c["sequencial"], item.numero_item):
                                 item.numero_item
                             for item in com_resultado}
-                        for f in concurrent.futures.as_completed(futuros):
+                        # `as_completed` roda na thread que itera este
+                        # gerador: é dela que `on_item` é chamado, não das
+                        # threads do pool
+                        for feitos, f in enumerate(
+                                concurrent.futures.as_completed(futuros), 1):
                             resultados[futuros[f]] = f.result()
+                            self._avisar_item(on_item, c, feitos, total)
                     finally:
                         ex.shutdown(wait=True, cancel_futures=True)
                 disjuntor.sucesso()

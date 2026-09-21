@@ -27,7 +27,9 @@ tentativa — pra decidir em segundos se vale iniciar uma coleta).
 Em volta disso: as fases em lote repetem sozinhas, uma vez, as consultas
 que falharam, e o erro que sobrar diz **quais** foram — `Motor.refazer(erro)`
 busca só elas, em vez da janela inteira. `Motor(cancelado=threading.Event)`
-para a coleta na hora, inclusive no meio de uma espera de retry. O logger
+para a coleta na hora, inclusive no meio de uma espera de retry.
+`itens_e_resultados(on_item=...)` dá o progresso item a item dentro de uma
+contratação grande. O logger
 `motor_pncp` (mudo por padrão) dá tentativas, status e latência por
 requisição. Detalhes no [MANUAL.md](MANUAL.md), que traz também três
 [diagramas](MANUAL.md#diagramas): uma requisição, a fase em lote e a
@@ -83,7 +85,7 @@ Instalação em cada sistema consumidor — **pinada numa tag**, nunca em
 sistema sem você pedir):
 
 ```bash
-pip install "git+https://github.com/devtulio/motor-pncp.git@v1.3.0"
+pip install "git+https://github.com/devtulio/motor-pncp.git@v1.4.0"
 ```
 
 Em modo editável durante o desenvolvimento do próprio motor:

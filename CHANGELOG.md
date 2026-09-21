@@ -2,7 +2,27 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
-## [Não versionado]
+## [1.4.0] — 2026-09-21
+
+Medido em um consumidor em produção: `itens_e_resultados` só avisava
+progresso uma vez por contratação. Dentro dela o motor lista os itens e
+busca o resultado de cada item homologado, uma chamada por item, e o
+registro só é gerado depois de todos. Com o portal degradado (~5 s por
+chamada), uma compra com centenas de itens deixou a coleta 1h25 parada em
+"contratação 1 de N": processo vivo, requisições saindo, nenhuma gravação
+— indistinguível de travamento. A única via de enxergar era o logger de
+diagnóstico, que não é contrato.
+
+### Added
+- `itens_e_resultados(..., on_item=None)`: `on_item(contratacao, feitos,
+  total)` dá o progresso dentro de uma contratação. `total` é quantos
+  resultados serão buscados nela (itens com `temResultado`, depois do
+  filtro `pendente`). Chamado com `feitos=0` logo depois da listagem e de
+  novo a cada resultado que chega; contratação sem resultado a buscar
+  recebe uma chamada `(0, 0)`. Exceção dentro dele não derruba a coleta,
+  exceto `SyncCancelado`. É chamado sempre da thread que itera o gerador,
+  nunca das threads do pool. Sem o parâmetro, comportamento idêntico ao
+  da 1.3.0.
 
 ### Added (testes; sem efeito na API)
 - `tests/fixtures/termos.json` e `termos_quantidade.json`: envelopes reais
