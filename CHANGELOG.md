@@ -2,7 +2,21 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
-## [Não versionado]
+## [1.5.0] — 2026-09-21
+
+Um consumidor monta radar de vencimento pela vigência, e ata prorrogada
+aparecia como vencida. A sondagem (abaixo) mostrou que o dado já chega
+por `atas()`; o que faltava era o tipo `Ata` expor o suficiente pra usar
+sem ir ao `.raw`.
+
+### Added
+- `Ata.vigencia_inicio`, `Ata.data_publicacao`, `Ata.cancelado` e
+  `Ata.data_cancelamento`.
+
+### Changed
+- `Ata.vigencia_inicio` e `Ata.vigencia_fim` leem as duas grafias do
+  portal: `vigenciaFim` (api/consulta) e `dataVigenciaFim` (api/pncp, o
+  registro individual). Para o que `Motor.atas()` devolve, nada muda.
 
 ### Added (testes e documentação; sem efeito na API)
 - Sondagem de como a prorrogação de ata aparece no PNCP, a pedido de um

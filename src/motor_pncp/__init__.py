@@ -39,4 +39,4 @@ __all__ = [
 logging.getLogger("motor_pncp").addHandler(logging.NullHandler())
 
 # fonte única da versão — pyproject.toml lê daqui (RELEASING.md §5)
-__version__ = "1.4.0"
+__version__ = "1.5.0"

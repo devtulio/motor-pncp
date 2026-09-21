@@ -206,13 +206,41 @@ class Ata:
         return ((self.raw.get("orgaoEntidade") or {}).get("cnpj")
                 or self.raw.get("cnpjOrgao"))
 
+    # A vigência muda de nome entre os dois hosts do portal: `vigenciaFim`
+    # em api/consulta (o que `Motor.atas` devolve), `dataVigenciaFim` em
+    # api/pncp (o registro individual da ata). As duas grafias são lidas.
+
+    @property
+    def vigencia_inicio(self) -> str | None:
+        return primeiro(self.raw, "vigenciaInicio", "dataVigenciaInicio")
+
     @property
     def vigencia_fim(self) -> str | None:
-        return self.raw.get("vigenciaFim")
+        """Fim da vigência COMO ESTÁ HOJE no portal. Prorrogação de ata
+        não é termo aditivo: é retificação que sobrescreve este valor, e o
+        anterior se perde na fonte. Quem precisa saber se (e de quanto) a
+        ata foi prorrogada guarda o valor antigo antes do upsert."""
+        return primeiro(self.raw, "vigenciaFim", "dataVigenciaFim")
+
+    @property
+    def data_publicacao(self) -> str | None:
+        """Quando a ata entrou no PNCP. Igual a `data_atualizacao` numa ata
+        nunca retificada — inclusive nas publicadas com atraso, em que as
+        duas são tardias: `data_atualizacao` recente, sozinha, não indica
+        alteração."""
+        return self.raw.get("dataPublicacaoPncp")
 
     @property
     def data_atualizacao(self) -> str | None:
         return self.raw.get("dataAtualizacao")
+
+    @property
+    def cancelado(self) -> bool:
+        return bool(self.raw.get("cancelado"))
+
+    @property
+    def data_cancelamento(self) -> str | None:
+        return self.raw.get("dataCancelamento")
 
 
 @dataclass(frozen=True)

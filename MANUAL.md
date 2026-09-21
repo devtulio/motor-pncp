@@ -193,7 +193,7 @@ pode ganhar campo novo sem quebrar nada aqui. Precisa de um campo sem
 | `Item` | `numero_item`, `descricao`, `tem_resultado`, `quantidade`, `valor_unitario_estimado`, `valor_total_estimado`, `data_atualizacao` |
 | `Resultado` | `cancelado`, `fornecedor_ni`, `fornecedor_nome`, `valor_unitario_homologado`, `valor_total_homologado`, `quantidade_homologada`, `data_resultado` |
 | `Contrato` | `numero_controle`, `ano`, `sequencial`, `orgao_cnpj`, `valor_global`, `data_atualizacao` |
-| `Ata` | `numero_controle`, `orgao_cnpj`, `vigencia_fim`, `data_atualizacao` |
+| `Ata` | `numero_controle`, `orgao_cnpj`, `vigencia_inicio`, `vigencia_fim`, `data_publicacao`, `data_atualizacao`, `cancelado`, `data_cancelamento` |
 | `PlanoPca` | `id_pca`, `ano`, `orgao_cnpj`, `itens` (lista crua — achatar em linhas é decisão sua), `data_atualizacao` |
 | `TermoAditivo` | `sequencial`, `tipo`, `valor_global`, `valor_acrescido`, `data_assinatura` |
 | `Orgao` | `cnpj`, `razao_social`, `esfera` (`M`/`E`/`F`/`N`) |
@@ -542,7 +542,26 @@ O que isso implica para quem monta radar de vencimento:
   e justificativa — texto livre, quase sempre genérico ("Retificação de
   Ata", "Ajuste na ata"). Nenhum campo traz a vigência de antes.
 - **Os dois hosts nomeiam o campo diferente:** `vigenciaFim` em
-  `api/consulta`, `dataVigenciaFim` em `api/pncp`.
+  `api/consulta`, `dataVigenciaFim` em `api/pncp`. `Ata.vigencia_inicio` e
+  `Ata.vigencia_fim` leem as duas grafias.
+
+Com as properties de `Ata` dá pra montar o radar sem ir ao `.raw`:
+
+```python
+from datetime import date
+
+for ata in motor.atas(cnpj, inicio, fim):
+    if ata.cancelado:
+        continue
+    antigo = buscar_vigencia_fim_gravada(ata.numero_controle)   # seu banco
+    if antigo and ata.vigencia_fim[:10] > antigo[:10]:
+        registrar_prorrogacao(ata.numero_controle, de=antigo, para=ata.vigencia_fim)
+    dias = (date.fromisoformat(ata.vigencia_fim[:10])
+            - date.fromisoformat(ata.vigencia_inicio[:10])).days
+    if not 1 <= dias <= 800:
+        continue        # vigência de digitação (ano 2194, 10 anos): fora do radar
+    gravar(ata)         # o upsert sobrescreve vigencia_fim — por isso o "antigo" vem antes
+```
 - Atas nascem com vigência absurda por erro de digitação (ano 2194, 10
   anos). Filtre por faixa plausível antes de tratar como prorrogada.
 
