@@ -1,0 +1,56 @@
+[
+ {
+  "dataPublicacaoPncp": "2024-06-25T15:04:02",
+  "dataInclusao": "2024-06-25T15:04:02",
+  "unidade": {
+   "codigoUnidade": "1",
+   "nomeUnidade": "PREFEITURA MUNICIPAL DE SAO JOSE DO RIO PRETO",
+   "municipioNome": "São José do Rio Preto",
+   "codigoIbge": "3549805",
+   "ufSigla": "SP",
+   "ufNome": "São Paulo"
+  },
+  "fornecedor": {
+   "id": 135867,
+   "niFornecedor": "11078254000149",
+   "nomeRazaoSocial": "RSP SEGURANCA E VIGILANCIA PATRIMONIAL LTDA",
+   "tipoPessoaId": "PJ"
+  },
+  "niFornecedor": "11078254000149",
+  "fornecedorSubContratado": null,
+  "niFornecedorSubContratado": null,
+  "orgaoEntidade": {
+   "cnpj": "46588950000180",
+   "razaoSocial": "MUNICIPIO DE SAO JOSE DO RIO PRETO",
+   "esferaId": "M",
+   "poderId": "N"
+  },
+  "dataAssinatura": "2024-06-14",
+  "dataVigenciaFim": null,
+  "dataVigenciaInicio": "2024-06-16",
+  "dataAtualizacao": "2024-06-25T15:04:02",
+  "tipoPessoa": "PJ",
+  "nomeRazaoSocialFornecedor": "RSP SEGURANCA E VIGILANCIA PATRIMONIAL LTDA",
+  "informacaoComplementar": null,
+  "processo": "1443/2024",
+  "sequencialTermoContrato": 1,
+  "numeroTermoContrato": "1",
+  "unidadeSubrogada": null,
+  "numeroParcelas": 1,
+  "nomeFornecedorSubContratado": null,
+  "valorParcela": 15384.6,
+  "valorGlobal": 15384.6,
+  "tipoPessoaSubContratada": null,
+  "qualificacaoAcrescimoSupressao": false,
+  "qualificacaoVigencia": false,
+  "qualificacaoFornecedor": false,
+  "qualificacaoReajuste": false,
+  "prazoAditadoDias": 30,
+  "informativoObservacao": null,
+  "orgaoSubrogado": null,
+  "objetoTermoContrato": "contratação de serviços de vigilante desarmado pelo período de 60 dias. Secretaria Municipal do Emprego e Trabalho.",
+  "fundamentoLegal": null,
+  "valorAcrescido": 15384.6,
+  "tipoTermoContratoNome": "Termo Aditivo"
+ }
+]

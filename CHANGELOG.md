@@ -2,6 +2,14 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
+## [Não versionado]
+
+### Added (testes; sem efeito na API)
+- `tests/fixtures/termos.json` e `termos_quantidade.json`: envelopes reais
+  de termo aditivo, a última fixture que faltava. O teste correspondente
+  deixou de pular. Confirma no dado real que `termos/quantidade` devolve
+  um inteiro puro (não um objeto) e que `TermoAditivo` lê todos os campos.
+
 ## [1.3.0] — 2026-09-19
 
 Pedido de um consumidor, medido no histórico de sincronização dele: de
