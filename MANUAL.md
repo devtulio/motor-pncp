@@ -514,6 +514,38 @@ como verdade eterna: um órgão "inexistente" ou um item "sem resultado"
 merecem nova consulta na próxima sincronização, não um carimbo
 definitivo.
 
+### Prorrogação de ata não é termo aditivo
+
+Contrato prorrogado ganha um termo aditivo, e a vigência efetiva se lê
+nos termos (`termos_aditivos`). Ata **não**: o PNCP não tem "termo de
+ata". A prorrogação do art. 84 da Lei 14.133 entra como **retificação do
+próprio registro** — `vigenciaFim` é sobrescrito no lugar. Verificado no
+portal: numa semana de atas atualizadas, cerca de metade das lidas tinha
+essa assinatura (alterada mais de 200 dias depois de publicada, vigência
+acima de 1 ano).
+
+O que isso implica para quem monta radar de vencimento:
+
+- **O dado chega sozinho.** A ata retificada volta em `atas()` com
+  `data_atualizacao` nova e o `vigencia_fim` já estendido. Se o seu acervo
+  não tem nenhuma ata acima de 1 ano, o mais provável é que ninguém ali
+  tenha prorrogado — não que o dado esteja escondido.
+- **A vigência original se perde na fonte.** O portal não guarda o valor
+  anterior. Se você precisa saber "foi prorrogada, e de quanto", guarde o
+  `vigencia_fim` antigo antes de sobrescrever no upsert.
+- **`data_atualizacao` sozinha não prova prorrogação.** Ata publicada com
+  atraso tem `dataAtualizacao` igual a `dataPublicacaoPncp`; e retificação
+  pode ser de outro campo. O sinal confiável é o `vigencia_fim` mudar
+  entre duas coletas.
+- **O histórico diz que houve e quando, não o quê.** Existe
+  `api/pncp .../atas/{n}/historico`, com eventos `Retificação / Ata`, data
+  e justificativa — texto livre, quase sempre genérico ("Retificação de
+  Ata", "Ajuste na ata"). Nenhum campo traz a vigência de antes.
+- **Os dois hosts nomeiam o campo diferente:** `vigenciaFim` em
+  `api/consulta`, `dataVigenciaFim` em `api/pncp`.
+- Atas nascem com vigência absurda por erro de digitação (ano 2194, 10
+  anos). Filtre por faixa plausível antes de tratar como prorrogada.
+
 ### Volume se lê no envelope
 
 Pra saber quantos registros uma consulta tem, use `contar_contratacoes`

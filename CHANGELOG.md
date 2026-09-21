@@ -2,6 +2,17 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
+## [Não versionado]
+
+### Added (testes e documentação; sem efeito na API)
+- Sondagem de como a prorrogação de ata aparece no PNCP, a pedido de um
+  consumidor cujo radar de vencimento mostrava ata prorrogada como
+  vencida. Conclusão: não existe termo aditivo de ata; a prorrogação é
+  retificação do próprio registro, com `vigenciaFim` sobrescrito, e já
+  chega por `atas()`. Três envelopes reais de uma ata prorrogada em
+  `tests/fixtures/ata_prorrogada_*.json`, `tests/test_ata_prorrogada.py`
+  travando os fatos, e MANUAL § "Prorrogação de ata não é termo aditivo".
+
 ## [1.4.0] — 2026-09-21
 
 Medido em um consumidor em produção: `itens_e_resultados` só avisava

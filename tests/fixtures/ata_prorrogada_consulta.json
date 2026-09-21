@@ -1,0 +1,35 @@
+{
+ "data": [
+  {
+   "numeroControlePNCPAta": "31015782000166-1-000012/2025-000001",
+   "numeroAtaRegistroPreco": "PE072025",
+   "anoAta": 2025,
+   "numeroControlePNCPCompra": "31015782000166-1-000012/2025",
+   "cancelado": false,
+   "dataCancelamento": null,
+   "dataAssinatura": "2025-09-11",
+   "vigenciaInicio": "2025-09-12",
+   "vigenciaFim": "2027-09-14",
+   "dataPublicacaoPncp": "2025-09-12",
+   "dataInclusao": "2025-09-12",
+   "dataAtualizacao": "2026-09-14",
+   "dataAtualizacaoGlobal": "2026-09-14",
+   "usuario": "3Tecnos Tecnologia LTDA",
+   "objetoContratacao": "Registro de preços para futura e eventual contratação de empresa para aquisição de sala tecnológica e serviços de  montagem e instalção dos equipamento.",
+   "cnpjOrgao": "31015782000166",
+   "nomeOrgao": "FUNDO MUNICIPAL DE EDUCACAO",
+   "cnpjOrgaoSubrogado": null,
+   "nomeOrgaoSubrogado": null,
+   "codigoUnidadeOrgao": "31015782000166",
+   "nomeUnidadeOrgao": "SEC. DE EDUCAÇÃO, CULTURA, ESPORTE E TURISMO DE PÃO DE AÇÚCAR",
+   "codigoUnidadeOrgaoSubrogado": null,
+   "nomeUnidadeOrgaoSubrogado": null,
+   "possibilidadeAdesao": true
+  }
+ ],
+ "totalRegistros": 1,
+ "totalPaginas": 1,
+ "numeroPagina": 1,
+ "paginasRestantes": 0,
+ "empty": false
+}
