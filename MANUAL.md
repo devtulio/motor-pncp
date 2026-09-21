@@ -13,6 +13,7 @@ ver [README.md](README.md). Tudo que está documentado aqui é **contrato**
 - [Registros tipados](#registros-tipados)
 - [Exceções](#exceções)
 - [Helpers de domínio](#helpers-de-domínio)
+- [Diagramas](#diagramas)
 - [Padrões de uso](#padrões-de-uso)
 - [Armadilhas do dado](#armadilhas-do-dado)
 - [Diagnóstico ao vivo](#diagnóstico-ao-vivo)
@@ -226,6 +227,41 @@ from motor_pncp import janelas, amd, num, primeiro, dt
 | `num(valor)` | Converte campo numérico da API pra `float`, ou `None` se malformado. |
 | `primeiro(item, *chaves)` | Primeiro valor não-nulo entre variantes de grafia de um campo. |
 | `dt(valor)` | String de data/hora do PNCP → `datetime` ciente de fuso (UTC). String sem fuso explícito vira UTC direto — **nunca** passa por horário local. Só precisa disso quem grava num tipo de data/hora real (Postgres, etc.); quem grava como TEXT não precisa. |
+
+---
+
+## Diagramas
+
+Três vistas do motor. A imagem é uma captura; o `.html` ao lado é o
+mesmo diagrama interativo (tema claro/escuro, zoom, busca, foco num nó) —
+baixe e abra no navegador. A fonte de cada um é o `.json` em
+[`docs/diagramas/`](docs/diagramas/); para regenerar, ver o fim desta seção.
+
+### Uma requisição (`Cliente.get`)
+
+Pacing, tentativa, classificação da falha, espera e as três leituras de
+um 404. [Versão interativa](docs/diagramas/requisicao.html).
+
+![Fluxo de uma requisição](docs/diagramas/requisicao.png)
+
+### Fase em lote, repescagem e `refazer`
+
+Da chamada do consumidor à marca d'água, com o caminho da falha parcial.
+[Versão interativa](docs/diagramas/fase-em-lote.html).
+
+![Fase em lote](docs/diagramas/fase-em-lote.png)
+
+### Fronteira
+
+O que é do motor, o que é de quem consome, e os três hosts externos.
+[Versão interativa](docs/diagramas/fronteira.html).
+
+![Fronteira do motor](docs/diagramas/fronteira.png)
+
+Os diagramas são gerados com a ferramenta Archify a partir dos `.json`
+(`deliver <tipo> <fonte>.json <saída>.html --quality showcase`). Mudou o
+comportamento que um deles descreve, atualize o `.json` e regenere — é
+documentação, não gera versão.
 
 ---
 

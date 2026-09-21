@@ -1,0 +1,242 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "motor_pncp — fase em lote, repescagem e refazer",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "Chamada do consumidor"
+        },
+        "backend": {
+          "label": "Motor"
+        },
+        "security": {
+          "label": "Disjuntor"
+        },
+        "messagebus": {
+          "label": "Repescagem"
+        },
+        "database": {
+          "label": "Banco do consumidor"
+        },
+        "external": {
+          "label": "Erro"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "consumidor",
+      "label": "Consumidor"
+    },
+    {
+      "id": "motor",
+      "label": "Motor — fase em lote"
+    },
+    {
+      "id": "falha",
+      "label": "Falha parcial",
+      "variant": "exception"
+    }
+  ],
+  "mainPath": [
+    "chamar",
+    "montar",
+    "passada",
+    "gravar",
+    "marca"
+  ],
+  "nodes": [
+    {
+      "id": "chamar",
+      "lane": "consumidor",
+      "col": 0,
+      "type": "frontend",
+      "label": "Chama a fase",
+      "sublabel": "contratacoes · atas · pca",
+      "width": 140
+    },
+    {
+      "id": "gravar",
+      "lane": "consumidor",
+      "col": 4,
+      "type": "database",
+      "label": "Grava registros",
+      "sublabel": "upsert é do consumidor",
+      "width": 140
+    },
+    {
+      "id": "marca",
+      "lane": "consumidor",
+      "col": 5,
+      "type": "database",
+      "label": "Marca d'água",
+      "sublabel": "avança só sem erro",
+      "width": 140
+    },
+    {
+      "id": "montar",
+      "lane": "motor",
+      "col": 1,
+      "type": "backend",
+      "label": "Monta consultas",
+      "sublabel": "modalidade × janela",
+      "width": 140
+    },
+    {
+      "id": "passada",
+      "lane": "motor",
+      "col": 2,
+      "type": "backend",
+      "label": "1ª passada",
+      "sublabel": "Cliente.baixar",
+      "width": 140
+    },
+    {
+      "id": "repescagem",
+      "lane": "motor",
+      "col": 3,
+      "type": "messagebus",
+      "label": "Repescagem",
+      "sublabel": "pausa 30 s, uma vez",
+      "width": 140
+    },
+    {
+      "id": "disjuntor",
+      "lane": "falha",
+      "col": 2,
+      "type": "security",
+      "label": "Disjuntor",
+      "sublabel": "falhas seguidas + tempo",
+      "width": 140
+    },
+    {
+      "id": "erro",
+      "lane": "falha",
+      "col": 4,
+      "type": "external",
+      "label": "PncpErro",
+      "sublabel": "consultas_falhas",
+      "width": 140
+    },
+    {
+      "id": "refazer",
+      "lane": "falha",
+      "col": 5,
+      "type": "backend",
+      "label": "Motor.refazer",
+      "sublabel": "só o que faltou",
+      "width": 140
+    }
+  ],
+  "edges": [
+    {
+      "id": "f-chama",
+      "from": "chamar",
+      "to": "montar"
+    },
+    {
+      "id": "f-baixa",
+      "from": "montar",
+      "to": "passada"
+    },
+    {
+      "id": "f-entrega",
+      "from": "passada",
+      "to": "gravar",
+      "label": "registros tipados",
+      "variant": "emphasis"
+    },
+    {
+      "id": "f-completa",
+      "from": "gravar",
+      "to": "marca",
+      "label": "fase sem erro"
+    },
+    {
+      "id": "f-falhou",
+      "from": "passada",
+      "to": "repescagem",
+      "label": "consulta falhou",
+      "role": "branch"
+    },
+    {
+      "id": "f-recuperou",
+      "from": "repescagem",
+      "to": "gravar",
+      "label": "recuperadas",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "f-seguidas",
+      "from": "passada",
+      "to": "disjuntor",
+      "label": "falhas seguidas",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "f-desiste",
+      "from": "disjuntor",
+      "to": "erro",
+      "label": "desiste da fase",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "f-persistiu",
+      "from": "repescagem",
+      "to": "erro",
+      "label": "seguiu falhando",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "f-refaz",
+      "from": "erro",
+      "to": "refazer",
+      "label": "consumidor decide"
+    },
+    {
+      "id": "f-volta",
+      "from": "refazer",
+      "to": "gravar",
+      "label": "o que faltava",
+      "variant": "dashed",
+      "role": "return"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "amber",
+      "title": "Repescagem",
+      "items": [
+        "Repete sozinha, uma vez, só as consultas que falharam",
+        "Coleta sem falha não espera nada",
+        "Consulta é identificada pela posição no lote, não pelo rótulo"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "PncpErro.consultas_falhas",
+      "items": [
+        "Lista (rótulo, params) que falharam ou nem foram tentadas",
+        "refazer devolve os mesmos tipos, só dessas consultas",
+        "Se sobrar falha, levanta outro erro com o resto"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Regra da marca d'água",
+      "items": [
+        "O que já foi gerado antes do erro já foi gravado",
+        "A marca só avança quando uma passada termina sem erro"
+      ]
+    }
+  ]
+}

@@ -29,7 +29,9 @@ que falharam, e o erro que sobrar diz **quais** foram — `Motor.refazer(erro)`
 busca só elas, em vez da janela inteira. `Motor(cancelado=threading.Event)`
 para a coleta na hora, inclusive no meio de uma espera de retry. O logger
 `motor_pncp` (mudo por padrão) dá tentativas, status e latência por
-requisição. Detalhes no [MANUAL.md](MANUAL.md).
+requisição. Detalhes no [MANUAL.md](MANUAL.md), que traz também três
+[diagramas](MANUAL.md#diagramas): uma requisição, a fase em lote e a
+fronteira com quem consome.
 
 ## Uso
 

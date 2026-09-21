@@ -1,0 +1,268 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "motor_pncp — uma requisição (Cliente.get)",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "Chamada"
+        },
+        "backend": {
+          "label": "Passo normal"
+        },
+        "security": {
+          "label": "Decisão ou parada"
+        },
+        "messagebus": {
+          "label": "Retry"
+        },
+        "database": {
+          "label": "Regra configurável"
+        },
+        "cloud": {
+          "label": "Rede"
+        },
+        "external": {
+          "label": "Erro final"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "tentativa",
+      "label": "Tentativa"
+    },
+    {
+      "id": "falha",
+      "label": "Falha e retry",
+      "variant": "exception"
+    },
+    {
+      "id": "semantica",
+      "label": "404 tem três leituras"
+    }
+  ],
+  "mainPath": [
+    "chamada",
+    "cancelado",
+    "pacing",
+    "urlopen",
+    "resposta"
+  ],
+  "nodes": [
+    {
+      "id": "chamada",
+      "lane": "tentativa",
+      "col": 0,
+      "type": "frontend",
+      "label": "Cliente.get",
+      "sublabel": "caminho escapado",
+      "width": 140
+    },
+    {
+      "id": "cancelado",
+      "lane": "tentativa",
+      "col": 1,
+      "type": "security",
+      "label": "cancelado?",
+      "sublabel": "Event, a cada tentativa",
+      "width": 140
+    },
+    {
+      "id": "pacing",
+      "lane": "tentativa",
+      "col": 2,
+      "type": "backend",
+      "label": "Pacing",
+      "sublabel": "intervalo_min por host",
+      "width": 140
+    },
+    {
+      "id": "urlopen",
+      "lane": "tentativa",
+      "col": 3,
+      "type": "cloud",
+      "label": "urlopen",
+      "sublabel": "timeout 30 → 90 s",
+      "width": 140
+    },
+    {
+      "id": "resposta",
+      "lane": "tentativa",
+      "col": 4,
+      "type": "backend",
+      "label": "200 / 204",
+      "sublabel": "dict ou None",
+      "width": 140
+    },
+    {
+      "id": "sync_cancelado",
+      "lane": "falha",
+      "col": 0,
+      "type": "security",
+      "label": "SyncCancelado",
+      "sublabel": "para na hora",
+      "width": 140
+    },
+    {
+      "id": "espera",
+      "lane": "falha",
+      "col": 1,
+      "type": "messagebus",
+      "label": "Espera",
+      "sublabel": "Retry-After ou jitter",
+      "width": 140
+    },
+    {
+      "id": "transitoria",
+      "lane": "falha",
+      "col": 2,
+      "type": "messagebus",
+      "label": "Transitória",
+      "sublabel": "conta como bloqueio",
+      "width": 140
+    },
+    {
+      "id": "classifica",
+      "lane": "falha",
+      "col": 3,
+      "type": "security",
+      "label": "Classifica",
+      "sublabel": "status ou exceção",
+      "width": 140
+    },
+    {
+      "id": "pncp_erro",
+      "lane": "falha",
+      "col": 4,
+      "type": "external",
+      "label": "PncpErro",
+      "sublabel": "com o motivo do corpo",
+      "width": 140
+    },
+    {
+      "id": "leitura_404",
+      "lane": "semantica",
+      "col": 3,
+      "type": "database",
+      "label": "modo_404",
+      "sublabel": "ausente · erro · retry",
+      "width": 140
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-inicio",
+      "from": "chamada",
+      "to": "cancelado"
+    },
+    {
+      "id": "e-segue",
+      "from": "cancelado",
+      "to": "pacing",
+      "label": "não"
+    },
+    {
+      "id": "e-dispara",
+      "from": "pacing",
+      "to": "urlopen"
+    },
+    {
+      "id": "e-ok",
+      "from": "urlopen",
+      "to": "resposta",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left",
+      "route": "straight"
+    },
+    {
+      "id": "e-parar",
+      "from": "cancelado",
+      "to": "sync_cancelado",
+      "label": "acionado",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "e-falhou",
+      "from": "urlopen",
+      "to": "classifica",
+      "label": "HTTPError · rede · não-JSON",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "e-transitoria",
+      "from": "classifica",
+      "to": "transitoria",
+      "label": "429 · 5xx · 422 · rede",
+      "role": "branch"
+    },
+    {
+      "id": "e-dorme",
+      "from": "transitoria",
+      "to": "espera",
+      "label": "restam tentativas",
+      "role": "branch"
+    },
+    {
+      "id": "e-volta",
+      "from": "espera",
+      "to": "cancelado",
+      "label": "nova tentativa",
+      "variant": "dashed",
+      "role": "return",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "route": "straight"
+    },
+    {
+      "id": "e-desiste",
+      "from": "classifica",
+      "to": "pncp_erro",
+      "label": "4xx ou esgotou",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "e-404",
+      "from": "classifica",
+      "to": "leitura_404",
+      "label": "404",
+      "role": "branch"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "amber",
+      "title": "Espera",
+      "items": [
+        "Backoff: sorteio em [0, 2^tentativa] (full jitter)",
+        "Retry-After vale em 429 e 503, com teto retry_after_teto",
+        "A espera acorda se cancelado for acionado"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "modo_404",
+      "items": [
+        "ausente: devolve None (CNPJ ou resultado não existe)",
+        "erro: ItensIndisponiveis (listagem de um registro)",
+        "retry: trata como transitória (listagens em lote)"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Falha ≠ ausência",
+      "items": [
+        "422 retenta no máximo 2 vezes",
+        "Sob storm a escada cai para tentativas_curtas"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,287 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "motor_pncp — fronteira com quem consome",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "Aplicação do consumidor"
+        },
+        "backend": {
+          "label": "Pacote motor_pncp"
+        },
+        "database": {
+          "label": "Banco do consumidor"
+        },
+        "cloud": {
+          "label": "Portal PNCP"
+        },
+        "security": {
+          "label": "Resiliência"
+        },
+        "external": {
+          "label": "Banco Central"
+        }
+      }
+    }
+  },
+  "layout": {
+    "mode": "grid",
+    "cols": 5,
+    "cellW": 160,
+    "cellH": 64,
+    "gapX": 110,
+    "gapY": 96
+  },
+  "components": [
+    {
+      "id": "persistencia",
+      "type": "database",
+      "label": "Persistência",
+      "sublabel": "schema · upsert · marca",
+      "row": 0,
+      "col": 0,
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "orquestracao",
+      "type": "frontend",
+      "label": "Orquestração",
+      "sublabel": "fases · janela",
+      "row": 0,
+      "col": 1,
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "interface",
+      "type": "frontend",
+      "label": "Interface",
+      "sublabel": "progresso · Parar",
+      "row": 0,
+      "col": 2,
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "tipos",
+      "type": "backend",
+      "label": "Registros tipados",
+      "sublabel": ".raw é a verdade",
+      "row": 1,
+      "col": 0,
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "motor",
+      "type": "backend",
+      "label": "Motor",
+      "sublabel": "fases · refazer · sonda",
+      "row": 1,
+      "col": 1,
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "cliente",
+      "type": "backend",
+      "label": "Cliente HTTP",
+      "sublabel": "pacing · retry · 404",
+      "row": 1,
+      "col": 2,
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "resiliencia",
+      "type": "security",
+      "label": "Resiliência",
+      "sublabel": "Adaptativo · Disjuntor",
+      "row": 1,
+      "col": 3,
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "ipca",
+      "type": "backend",
+      "label": "ipca()",
+      "sublabel": "cliente próprio",
+      "row": 1,
+      "col": 4,
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "consulta",
+      "type": "cloud",
+      "label": "api/consulta",
+      "sublabel": "contratações · atas · PCA",
+      "row": 2,
+      "col": 1,
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "pncp",
+      "type": "cloud",
+      "label": "api/pncp",
+      "sublabel": "itens · resultados · órgão",
+      "row": 2,
+      "col": 2,
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "bcb",
+      "type": "external",
+      "label": "Banco Central",
+      "sublabel": "SGS 433 (IPCA)",
+      "row": 2,
+      "col": 4,
+      "size": [
+        160,
+        64
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Consumidor — fora do motor",
+      "wraps": [
+        "persistencia",
+        "orquestracao",
+        "interface"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "motor_pncp — só stdlib",
+      "wraps": [
+        "tipos",
+        "motor",
+        "cliente",
+        "resiliencia",
+        "ipca"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "c-chama",
+      "from": "orquestracao",
+      "to": "motor",
+      "label": "chama as fases",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "c-tipa",
+      "from": "motor",
+      "to": "tipos",
+      "label": "embrulha"
+    },
+    {
+      "id": "c-entrega",
+      "from": "tipos",
+      "to": "persistencia",
+      "label": "registros",
+      "variant": "emphasis",
+      "labelDy": -28
+    },
+    {
+      "id": "c-http",
+      "from": "motor",
+      "to": "cliente",
+      "label": "GET"
+    },
+    {
+      "id": "c-sinais",
+      "from": "cliente",
+      "to": "resiliencia",
+      "label": "sucesso · bloqueio"
+    },
+    {
+      "id": "c-controle",
+      "from": "interface",
+      "to": "cliente",
+      "label": "cancelado",
+      "variant": "security",
+      "labelDy": 24
+    },
+    {
+      "id": "c-consulta",
+      "from": "cliente",
+      "to": "consulta",
+      "label": "HTTPS"
+    },
+    {
+      "id": "c-pncp",
+      "from": "cliente",
+      "to": "pncp",
+      "label": "HTTPS",
+      "labelDy": 24
+    },
+    {
+      "id": "c-bcb",
+      "from": "ipca",
+      "to": "bcb",
+      "label": "HTTPS",
+      "labelDy": 24
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Do motor",
+      "items": [
+        "HTTP, pacing, retry, repescagem, disjuntor",
+        "Registros tipados que embrulham o JSON cru",
+        "Nenhum SQL, nenhum schema, nenhuma dependência"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "De quem consome",
+      "items": [
+        "Qual fase roda e com que janela",
+        "Upsert, dedup e marca d'água",
+        "Quantas vezes insistir no refazer"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Hosts caem separados",
+      "items": [
+        "api/consulta e api/pncp falham de forma independente",
+        "O BCB tem cliente próprio: falha dele não conta como bloqueio do PNCP"
+      ]
+    }
+  ]
+}
