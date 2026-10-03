@@ -2,6 +2,31 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
+## [1.6.0] — 2026-10-02
+
+Uma verificação da API de consulta (motivada por notícia, ainda sem
+confirmação oficial, de filtros novos na busca do portal) mostrou que
+nenhum campo novo entrou nos envelopes de contratação, item e resultado
+— mas que vários campos úteis já vinham e só estavam no `.raw`. Esta
+versão dá property de leitura a onze deles.
+
+### Added
+- `Contratacao.plataforma` (`usuarioNome`), `link_sistema_origem`,
+  `fontes_orcamentarias` (lista de nomes) e `modo_disputa`.
+- `Item.situacao` (deserto, fracassado, homologado…), `tipo_beneficio`
+  (ME/EPP previsto) e `criterio_julgamento`.
+- `Resultado.situacao`, `porte_fornecedor`, `natureza_juridica` e
+  `beneficio_me_epp` (o indicador `aplicacaoBeneficioMeEpp`, sempre
+  bool). Não indica exclusividade: num item exclusivo para ME/EPP vencido
+  por uma ME o portal manda `False`; exclusividade é `Item.tipo_beneficio`.
+- MANUAL § "Plataforma não é fonte, nem lugar da disputa".
+
+### Fixed (testes; sem efeito na API)
+- O teste do diagnóstico ao vivo (`python -m motor_pncp`) batia no Banco
+  Central de verdade desde a 1.2.0, quando `ipca` virou função de módulo
+  e o falso do teste deixou de ser usado — falhava sempre que o BCB não
+  respondia. Agora o `ipca` também é falso no teste.
+
 ## [1.5.0] — 2026-09-21
 
 Um consumidor monta radar de vencimento pela vigência, e ata prorrogada

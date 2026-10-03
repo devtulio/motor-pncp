@@ -93,6 +93,34 @@ class Contratacao:
     def data_publicacao(self) -> str | None:
         return self.raw.get("dataPublicacaoPncp")
 
+    @property
+    def plataforma(self) -> str | None:
+        """Sistema que PUBLICOU a contratação no PNCP (ex.: "Compras.gov.br",
+        ou o nome da empresa integradora de um portal privado). Não prova
+        onde a disputa correu, e os nomes não são padronizados entre
+        integradoras — agrupar exige um de-para do lado de quem consome."""
+        return self.raw.get("usuarioNome")
+
+    @property
+    def link_sistema_origem(self) -> str | None:
+        """Link da contratação na plataforma de origem; pode vir vazio."""
+        return self.raw.get("linkSistemaOrigem") or None
+
+    @property
+    def fontes_orcamentarias(self) -> list[str]:
+        """Origem do recurso (ex.: ["Municipal"], ["Estadual"]) — uma compra
+        pode ter mais de uma. Não é a plataforma. Lista vazia quando o órgão
+        não informou (comum em contratação antiga); o objeto completo, com
+        código e descrição, segue em `.raw["fontesOrcamentarias"]`."""
+        return [f.get("nome") for f in (self.raw.get("fontesOrcamentarias") or [])
+                if isinstance(f, dict) and f.get("nome")]
+
+    @property
+    def modo_disputa(self) -> str | None:
+        """Ex.: "Aberto", "Fechado", "Aberto-Fechado", "Não se aplica"
+        (comum em dispensa e inexigibilidade)."""
+        return self.raw.get("modoDisputaNome")
+
 
 @dataclass(frozen=True)
 class Item:
@@ -126,6 +154,25 @@ class Item:
     def data_atualizacao(self) -> str | None:
         return self.raw.get("dataAtualizacao")
 
+    @property
+    def situacao(self) -> str | None:
+        """Situação declarada do item (ex.: "Homologado", "Deserto",
+        "Fracassado", "Em andamento") — use isto em vez de inferir deserto
+        pela ausência de resultado."""
+        return self.raw.get("situacaoCompraItemNome")
+
+    @property
+    def tipo_beneficio(self) -> str | None:
+        """Benefício ME/EPP previsto para o item (ex.: "Sem benefício",
+        "Não se aplica", "Participação exclusiva para ME/EPP"). É o campo
+        que diz se o item era exclusivo."""
+        return self.raw.get("tipoBeneficioNome")
+
+    @property
+    def criterio_julgamento(self) -> str | None:
+        """Ex.: "Menor preço", "Maior desconto", "Técnica e preço"."""
+        return self.raw.get("criterioJulgamentoNome")
+
 
 @dataclass(frozen=True)
 class Resultado:
@@ -158,6 +205,31 @@ class Resultado:
     @property
     def data_resultado(self) -> str | None:
         return self.raw.get("dataResultado")
+
+    @property
+    def situacao(self) -> str | None:
+        """Situação do resultado (ex.: "Informado", "Cancelado")."""
+        return self.raw.get("situacaoCompraItemResultadoNome")
+
+    @property
+    def porte_fornecedor(self) -> str | None:
+        """Porte declarado do vencedor (ex.: "ME", "EPP", "Demais")."""
+        return self.raw.get("porteFornecedorNome")
+
+    @property
+    def natureza_juridica(self) -> str | None:
+        """Ex.: "Sociedade Empresária Limitada". O código vem em
+        `.raw["naturezaJuridicaId"]` como TEXTO ("2062"), não número."""
+        return self.raw.get("naturezaJuridicaNome")
+
+    @property
+    def beneficio_me_epp(self) -> bool:
+        """Indicador `aplicacaoBeneficioMeEpp` do portal. NÃO diz se o item
+        era exclusivo para ME/EPP: num item de participação exclusiva,
+        vencido por uma ME, o portal manda `False` (visto no envelope real)
+        — exclusividade se lê em `Item.tipo_beneficio`. Campo ausente vira
+        `False`, nunca `None`."""
+        return bool(self.raw.get("aplicacaoBeneficioMeEpp"))
 
 
 @dataclass(frozen=True)

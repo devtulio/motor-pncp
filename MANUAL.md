@@ -189,9 +189,9 @@ pode ganhar campo novo sem quebrar nada aqui. Precisa de um campo sem
 
 | Tipo | Campos de conveniência |
 |---|---|
-| `Contratacao` | `numero_controle`, `ano`, `sequencial`, `orgao_cnpj`, `orgao_nome`, `unidade_nome`, `modalidade_id`, `situacao`, `objeto`, `valor_estimado`, `valor_homologado`, `data_atualizacao`, `data_publicacao` |
-| `Item` | `numero_item`, `descricao`, `tem_resultado`, `quantidade`, `valor_unitario_estimado`, `valor_total_estimado`, `data_atualizacao` |
-| `Resultado` | `cancelado`, `fornecedor_ni`, `fornecedor_nome`, `valor_unitario_homologado`, `valor_total_homologado`, `quantidade_homologada`, `data_resultado` |
+| `Contratacao` | `numero_controle`, `ano`, `sequencial`, `orgao_cnpj`, `orgao_nome`, `unidade_nome`, `modalidade_id`, `situacao`, `objeto`, `valor_estimado`, `valor_homologado`, `data_atualizacao`, `data_publicacao`, `plataforma`, `link_sistema_origem`, `fontes_orcamentarias`, `modo_disputa` |
+| `Item` | `numero_item`, `descricao`, `tem_resultado`, `quantidade`, `valor_unitario_estimado`, `valor_total_estimado`, `data_atualizacao`, `situacao`, `tipo_beneficio`, `criterio_julgamento` |
+| `Resultado` | `cancelado`, `fornecedor_ni`, `fornecedor_nome`, `valor_unitario_homologado`, `valor_total_homologado`, `quantidade_homologada`, `data_resultado`, `situacao`, `porte_fornecedor`, `natureza_juridica`, `beneficio_me_epp` |
 | `Contrato` | `numero_controle`, `ano`, `sequencial`, `orgao_cnpj`, `valor_global`, `data_atualizacao` |
 | `Ata` | `numero_controle`, `orgao_cnpj`, `vigencia_inicio`, `vigencia_fim`, `data_publicacao`, `data_atualizacao`, `cancelado`, `data_cancelamento` |
 | `PlanoPca` | `id_pca`, `ano`, `orgao_cnpj`, `itens` (lista crua — achatar em linhas é decisão sua), `data_atualizacao` |
@@ -564,6 +564,32 @@ for ata in motor.atas(cnpj, inicio, fim):
 ```
 - Atas nascem com vigência absurda por erro de digitação (ano 2194, 10
   anos). Filtre por faixa plausível antes de tratar como prorrogada.
+
+### Plataforma não é fonte, nem lugar da disputa
+
+`Contratacao.plataforma` é o sistema que **publicou** a contratação no
+PNCP — "Compras.gov.br", ou o nome da empresa integradora de um portal
+privado. Os nomes não são padronizados entre integradoras; agrupar
+exige um de-para do seu lado. E publicar não prova onde a disputa
+correu: a tela não deve afirmar "a disputa foi na plataforma X" só com
+esse campo.
+
+`Contratacao.fontes_orcamentarias` é outra coisa: a **origem do
+dinheiro** ("Municipal", "Estadual", "Federal"), em lista — uma compra
+pode ter mais de uma, e contratação antiga costuma vir sem nenhuma. É o
+campo que mostra quanto do que um município compra vem de repasse.
+
+`Item.tipo_beneficio` diz o benefício ME/EPP **previsto** no item
+("Participação exclusiva para ME/EPP", "Sem benefício") — é ele que diz
+se o item era exclusivo. `Resultado.beneficio_me_epp` é só o indicador
+`aplicacaoBeneficioMeEpp` do portal e **não** substitui o anterior: num
+item exclusivo vencido por uma ME, o portal mandou `False`. Não conte
+"compras com benefício ME/EPP" por ele. `Item.situacao` traz o item
+deserto ou fracassado declarado — melhor do que inferir pela falta de
+resultado.
+
+Município do fornecedor **não vem** na leitura da API: existe só no
+formulário de envio do órgão. Para tê-lo, cruze o CNPJ com outra base.
 
 ### Volume se lê no envelope
 

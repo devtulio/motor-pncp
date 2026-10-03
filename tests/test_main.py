@@ -44,14 +44,18 @@ class MotorFake:
                 continue
             yield c, [(Item({"numeroItem": 1}), None)]
 
-    def ipca(self, inicio=None):
-        yield {"competencia": "2026-08", "variacao": 0.1}
+def ipca_fake(inicio=None, **kw):
+    yield {"competencia": "2026-08", "variacao": 0.1}
 
 
 @pytest.mark.parametrize("pncp_fora, esperado", [(False, 0), (True, 1)])
 def test_codigo_de_saida_reflete_falha_por_host(monkeypatch, capsys, pncp_fora, esperado):
     monkeypatch.setattr(cli, "Motor",
                         lambda **kw: MotorFake(pncp_fora=pncp_fora, **kw))
+    # desde a 1.2.0 o CLI chama a função de módulo `ipca`, não o método do
+    # Motor — sem isto o teste batia no Banco Central de verdade e falhava
+    # sempre que o BCB não respondia
+    monkeypatch.setattr(cli, "ipca", ipca_fake)
     assert cli.main(["3553401", "--dias", "30", "--silencioso"]) == esperado
     saida = capsys.readouterr().out
     assert "api/consulta: 6/6 ok" in saida
