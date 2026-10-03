@@ -29,7 +29,11 @@ que falharam, e o erro que sobrar diz **quais** foram — `Motor.refazer(erro)`
 busca só elas, em vez da janela inteira. `Motor(cancelado=threading.Event)`
 para a coleta na hora, inclusive no meio de uma espera de retry.
 `itens_e_resultados(on_item=...)` dá o progresso item a item dentro de uma
-contratação grande. O logger
+contratação grande. Os registros tipados expõem, além de valores e
+datas, a plataforma que publicou, a fonte orçamentária, o modo de
+disputa, a situação do item, o benefício ME/EPP, o porte e a natureza
+jurídica do vencedor, e a vigência e o cancelamento das atas — tudo o que
+não tem property continua no `.raw`. O logger
 `motor_pncp` (mudo por padrão) dá tentativas, status e latência por
 requisição. Detalhes no [MANUAL.md](MANUAL.md), que traz também três
 [diagramas](MANUAL.md#diagramas): uma requisição, a fase em lote e a
