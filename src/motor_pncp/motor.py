@@ -259,10 +259,53 @@ class Motor:
         `{"total": int, "parcial": bool}`; `parcial=True` quando alguma
         consulta falhou (o total é subestimado, nunca superestimado).
         """
+        return self._contar("/v1/contratacoes/atualizacao",
+                            {"codigoMunicipioIbge": str(codigo_ibge)}, inicio, fim)
+
+    def contratacoes_do_orgao(self, cnpj, inicio: date,
+                              fim: date) -> Iterator[Contratacao]:
+        """Gera `Contratacao` de UM órgão (por CNPJ), publicadas na janela.
+
+        Para observar um órgão fora do município que você sincroniza — um
+        tribunal de contas, uma secretaria estadual — sem baixar a cidade
+        inteira em que as unidades dele ficam. Mesmas 13 modalidades ×
+        janelas de até 364 dias, mesma resiliência e mesmo erro de
+        `contratacoes` (repescagem, `PncpErro.consultas_falhas`,
+        `Motor.refazer`).
+
+        **Usa a rota de PUBLICAÇÃO, não a de atualização.** As duas
+        declaram o filtro `cnpj`, mas `/v1/contratacoes/atualizacao` com
+        ele responde HTTP 500 ou não responde (medido em dois dias
+        diferentes); `/v1/contratacoes/publicacao` responde e devolve só o
+        órgão pedido. Consequência que muda a sua sincronização: a janela
+        aqui é da data de PUBLICAÇÃO. Uma contratação publicada antes da
+        janela e alterada depois (homologação, retificação) não volta.
+        **Não use marca d'água incremental com este método: releia a
+        janela inteira do órgão a cada sincronização** e deixe o seu
+        upsert absorver o que mudou. Para um órgão só, o volume costuma
+        ser pequeno — confira com `contar_contratacoes_do_orgao`.
+        """
+        consultas = [(nome, {"dataInicial": amd(a), "dataFinal": amd(b),
+                             "codigoModalidadeContratacao": codigo,
+                             "cnpj": cnpj})
+                    for codigo, nome in MODALIDADES.items()
+                    for a, b in janelas(inicio, fim)]
+        yield from self._baixar_com_disjuntor(
+            "/v1/contratacoes/publicacao", consultas,
+            rotulo_fase="Contratações do órgão", tipo=Contratacao, tamanho_pagina=50)
+
+    def contar_contratacoes_do_orgao(self, cnpj, inicio: date = DATA_INICIO_PNCP,
+                                     fim: date | None = None) -> dict:
+        """Quantas contratações um órgão publicou, sem baixar nenhuma —
+        mesmo envelope, mesma rota de publicação e mesmo retorno de
+        `contar_contratacoes`. Serve pra decidir se reler a janela inteira
+        a cada sincronização é barato (quase sempre é)."""
+        return self._contar("/v1/contratacoes/publicacao", {"cnpj": cnpj}, inicio, fim)
+
+    def _contar(self, caminho, filtro, inicio, fim):
         fim = fim or date.today()
         consultas = [{"dataInicial": amd(a), "dataFinal": amd(b),
-                     "codigoModalidadeContratacao": codigo,
-                     "codigoMunicipioIbge": str(codigo_ibge),
+                     "codigoModalidadeContratacao": codigo, **filtro,
                      "pagina": 1, "tamanhoPagina": 10}
                     for codigo in MODALIDADES
                     for a, b in janelas(inicio, fim)]
@@ -272,8 +315,7 @@ class Motor:
         def uma(params):
             nonlocal falhas
             try:
-                d = self._cliente.get(self._base, "/v1/contratacoes/atualizacao",
-                                      params, modo_404="retry")
+                d = self._cliente.get(self._base, caminho, params, modo_404="retry")
             except PncpErro:
                 falhas += 1
                 return 0

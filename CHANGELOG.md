@@ -2,6 +2,30 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
+## [1.7.0] — 2026-10-22
+
+Um consumidor vai observar órgãos específicos fora do seu acervo
+municipal, começando por um tribunal de contas estadual. Até aqui só
+havia `contratacoes(codigo_ibge, ...)`: trazer a capital inteira para
+filtrar um CNPJ não faz sentido. Contratos, atas, PCA e itens já eram por
+CNPJ e servem como estão.
+
+### Added
+- `Motor.contratacoes_do_orgao(cnpj, inicio, fim)`: contratações de um
+  órgão, 13 modalidades × janelas de até 364 dias, mesma resiliência e
+  mesmo erro de `contratacoes` (repescagem, `consultas_falhas`,
+  `refazer`). Usa `/v1/contratacoes/publicacao`: a rota de atualização
+  declara o filtro `cnpj`, mas com ele responde HTTP 500 ou não responde
+  (medido em dois dias). A janela é da data de publicação — o consumidor
+  deve reler a janela inteira a cada sincronização, não usar marca
+  d'água incremental.
+- `Motor.contar_contratacoes_do_orgao(cnpj, inicio, fim)`: total pelo
+  envelope, sem baixar nada.
+
+### Changed
+- `contar_contratacoes` passa a usar um contador interno comum com o
+  novo método. Mesma rota, mesmos parâmetros e mesmo retorno.
+
 ## [1.6.0] — 2026-10-02
 
 Uma verificação da API de consulta (motivada por notícia, ainda sem

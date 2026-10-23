@@ -76,6 +76,39 @@ Quantas contratações um município tem, sem baixar nenhuma — lê
 `{"total": int, "parcial": bool}`; `parcial=True` quando alguma consulta
 falhou (o total é subestimado, nunca superestimado).
 
+### `contratacoes_do_orgao(cnpj, inicio, fim) -> Iterator[Contratacao]`
+
+Contratações de **um órgão** (por CNPJ), para observar quem está fora do
+município que você sincroniza — um tribunal de contas, uma secretaria
+estadual — sem baixar a cidade inteira em que as unidades dele ficam. Mesma
+resiliência e mesmo erro de `contratacoes` (repescagem,
+`PncpErro.consultas_falhas`, `refazer`).
+
+**Usa a rota de publicação, e isso muda a sua sincronização.** A rota de
+atualização declara o filtro `cnpj`, mas com ele responde HTTP 500 ou não
+responde; a de publicação responde e devolve só o órgão pedido. Só que a
+janela passa a ser da **data de publicação**: uma contratação publicada
+antes da janela e alterada depois (homologação, retificação) não volta.
+Não use marca d'água incremental com este método — releia a janela
+inteira do órgão a cada sincronização e deixe o upsert absorver o que
+mudou.
+
+```python
+from datetime import date
+from motor_pncp import DATA_INICIO_PNCP
+
+cnpj = "..."                                       # o órgão observado
+print(motor.contar_contratacoes_do_orgao(cnpj))    # {"total": 545, "parcial": False}
+for c in motor.contratacoes_do_orgao(cnpj, DATA_INICIO_PNCP, date.today()):
+    gravar(c)                                      # upsert: o que mudou é sobrescrito
+```
+
+### `contar_contratacoes_do_orgao(cnpj, inicio=DATA_INICIO_PNCP, fim=None) -> dict`
+
+Como `contar_contratacoes`, mas por CNPJ e pela rota de publicação: lê
+`totalRegistros` do envelope, sem baixar nada. Serve para conferir que
+reler a janela inteira é barato.
+
 ### `contratos(cnpj, inicio, fim) -> Iterator[Contrato]`
 
 Contratos de um órgão atualizados na janela — a API filtra por CNPJ, não
