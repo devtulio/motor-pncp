@@ -119,7 +119,8 @@ class Motor:
         conforme chegam.
 
         Compartilhada por toda fase que baixa uma lista fixa de consultas
-        (contratações, contratos, atas, PCA) — a única diferença entre
+        (contratações por município ou por órgão, contratos, atas, PCA) —
+        a única diferença entre
         elas é como cada uma monta `consultas` e em que tipo embrulha o
         resultado; a resiliência é uma preocupação só, não uma por fase.
 
@@ -192,8 +193,9 @@ class Motor:
     def refazer(self, erro: PncpErro) -> Iterator:
         """Repete só as consultas que falharam numa fase em lote.
 
-        `erro` é o `PncpErro` levantado por `contratacoes`, `contratos`,
-        `atas` ou `pca`. Gera os mesmos registros tipados daquela fase,
+        `erro` é o `PncpErro` levantado por `contratacoes`,
+        `contratacoes_do_orgao`, `contratos`, `atas` ou `pca` (volta pela
+        mesma rota da fase de origem). Gera os mesmos registros tipados daquela fase,
         só das consultas em `erro.consultas_falhas` — em vez de refazer a
         janela inteira por causa de uma consulta. Se alguma seguir
         falhando, levanta outro `PncpErro`, com as que sobraram; pode

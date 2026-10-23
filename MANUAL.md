@@ -53,7 +53,8 @@ decidir que a fase morreu, as consultas restantes nem são tentadas.
 ### `refazer(erro) -> Iterator`
 
 Repete só as consultas que falharam numa fase em lote. `erro` é o
-`PncpErro` levantado por `contratacoes`, `contratos`, `atas` ou `pca`;
+`PncpErro` levantado por `contratacoes`, `contratacoes_do_orgao`,
+`contratos`, `atas` ou `pca` (volta pela mesma rota da fase de origem);
 gera os mesmos registros tipados daquela fase, só das consultas em
 `erro.consultas_falhas`. Se alguma seguir falhando, levanta outro
 `PncpErro` com as que sobraram — pode chamar de novo com ele. Levanta

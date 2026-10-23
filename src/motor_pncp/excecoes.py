@@ -4,9 +4,10 @@
 class PncpErro(Exception):
     """Falha de comunicação com o PNCP após esgotar as tentativas.
 
-    Quando vem de uma fase em lote (`contratacoes`, `contratos`, `atas`,
-    `pca`), `consultas_falhas` lista as `(rótulo, params)` que falharam
-    ou nem foram tentadas — passe o erro a `Motor.refazer(erro)` pra
+    Quando vem de uma fase em lote (`contratacoes`,
+    `contratacoes_do_orgao`, `contratos`, `atas`, `pca`),
+    `consultas_falhas` lista as `(rótulo, params)` que falharam ou nem
+    foram tentadas — passe o erro a `Motor.refazer(erro)` pra
     repetir só elas. Vazio nos demais casos.
     """
 
