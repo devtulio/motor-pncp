@@ -348,8 +348,18 @@ def test_logging_registra_tentativas_e_esgotamento(urlopen_fake, caplog):
         with pytest.raises(PncpErro):
             cliente().get("https://x", "/y", {}, tentativas=2)
     textos = [r.getMessage() for r in caplog.records]
-    assert any("retry /y tentativa=1 causa=http503" in t for t in textos)
+    assert any("retry x/y tentativa=1 causa=http503" in t for t in textos)
     assert any(r.levelno == logging.WARNING for r in caplog.records)
+
+
+def test_log_traz_o_host(urlopen_fake, caplog):
+    # Consulta e Integração têm limites diferentes: o log tem de dizer qual
+    import logging
+    urlopen_fake.append(resposta_json({"data": []}))
+    with caplog.at_level(logging.DEBUG, logger="motor_pncp"):
+        cliente().get("https://pncp.gov.br/api/consulta", "/v1/contratacoes", {})
+    assert any("GET pncp.gov.br/api/consulta/v1/contratacoes status=200" in m
+               for m in caplog.messages)
 
 
 def test_logger_da_biblioteca_tem_nullhandler():

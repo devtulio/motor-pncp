@@ -460,10 +460,13 @@ logging.basicConfig(level=logging.WARNING)
 logging.getLogger("motor_pncp").setLevel(logging.DEBUG)
 ```
 
-`DEBUG`: uma linha por requisição bem-sucedida (`GET /caminho status=200
-tentativa=1 0.84s`) e por retry (`retry /caminho tentativa=2
-causa=http503 espera=3.1s`). `WARNING`: uma linha quando as tentativas
-se esgotam. O callback `progresso` continua sendo o canal pra UI; o log
+`DEBUG`: uma linha por requisição bem-sucedida (`GET
+pncp.gov.br/api/consulta/v1/contratacoes/publicacao status=200
+tentativa=1 0.84s`) e por retry (`retry pncp.gov.br/api/pncp/v1/...
+tentativa=2 causa=http503 espera=3.1s`) — host e caminho, para separar
+Consulta de Integração. `WARNING`: uma linha quando as tentativas se
+esgotam e uma por HTTP 429 (`HTTP 429 em <host/caminho> tentativa=1
+support_id=...`). O callback `progresso` continua sendo o canal pra UI; o log
 é pra diagnóstico e métricas.
 
 ### Falha parcial: repita só o que falhou

@@ -239,6 +239,9 @@ class Cliente:
         # fixo, então não há SSRF — é só não deixar a entrada mudar a rota.
         url = (f"{url_base}{urllib.parse.quote(caminho, safe='/')}"
                f"?{urllib.parse.urlencode(params)}")
+        # no log vai o host também: Consulta e Integração têm limites
+        # diferentes, e quem filtra o log precisa distinguir as duas
+        rota = url_base.split("://", 1)[-1] + caminho
 
         def retentar(chave, mensagem, espera):
             # caminho comum de toda falha transitória: conta como bloqueio
@@ -248,7 +251,7 @@ class Cliente:
             self._adaptativo.registrar_bloqueio()
             self._avisar_causa_recorrente(chave, mensagem)
             _log.debug("retry %s tentativa=%d causa=%s espera=%.1fs",
-                       caminho, tentativa + 1, chave, espera)
+                       rota, tentativa + 1, chave, espera)
             self._dormir(espera)
 
         for tentativa in range(tentativas):
@@ -270,7 +273,7 @@ class Cliente:
                     # não sabem se alguns 429 numa janela são o portal
                     # recusando ou o ruído normal de uma fila grande andando
                     self._adaptativo.registrar_sucesso()
-                    _log.debug("GET %s status=%d tentativa=%d %.2fs", caminho,
+                    _log.debug("GET %s status=%d tentativa=%d %.2fs", rota,
                                resp.status, tentativa + 1, time.monotonic() - inicio)
                     if resp.status == 204:
                         return None
@@ -295,7 +298,7 @@ class Cliente:
                     return None  # sem registros para o filtro
                 if e.code == 429:
                     sid = _support_id(e)
-                    _log.warning("HTTP 429 em %s tentativa=%d support_id=%s", caminho,
+                    _log.warning("HTTP 429 em %s tentativa=%d support_id=%s", rota,
                                  tentativa + 1, sid or "-")
                 if e.code == 429 and tentativa < min(tentativas, TENTATIVAS_429) - 1:
                     pedido = _retry_after(e.headers, self._config.retry_after_teto)

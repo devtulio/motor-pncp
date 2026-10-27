@@ -2,6 +2,15 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
+## [1.8.1] — 2026-10-27
+
+### Fixed
+- As linhas de log de requisição (`GET`, `retry` e `HTTP 429`) traziam só
+  o caminho, sem o host, e Consulta e Integração ficavam indistinguíveis
+  no log, embora tenham limites diferentes. Agora trazem host e caminho
+  (`pncp.gov.br/api/consulta/v1/...`). Quem filtrava o log por caminho
+  puro precisa ajustar o filtro; o texto do log não é contrato.
+
 ## [1.8.0] — 2026-10-27
 
 O PNCP respondeu a um chamado com os limites de requisição, por IP de

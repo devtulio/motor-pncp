@@ -14,7 +14,7 @@ Só isto é coberto pelo número de versão:
 - O CLI `python -m motor_pncp`: argumentos e código de saída.
 
 **Não é contrato** (mesmo que alguém dependa — Hyrum's Law): módulos com
-`_` (`_http`, `_resiliencia`), texto de mensagens de erro e de progresso,
+`_` (`_http`, `_resiliencia`), texto de mensagens de erro, de progresso e de log,
 ordem interna de requisições, nomes de chaves usadas pelo `Dedup`, o
 nome, o conteúdo e a frequência de escrita dos arquivos de ritmo em
 `~/.motor_pncp/` (o que é contrato é `Config.pasta_ritmo` e a variável
