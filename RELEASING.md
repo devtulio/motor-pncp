@@ -15,9 +15,16 @@ Só isto é coberto pelo número de versão:
 
 **Não é contrato** (mesmo que alguém dependa — Hyrum's Law): módulos com
 `_` (`_http`, `_resiliencia`), texto de mensagens de erro e de progresso,
-ordem interna de requisições, nomes de chaves usadas pelo `Dedup`, e os
+ordem interna de requisições, nomes de chaves usadas pelo `Dedup`, o
+nome, o conteúdo e a frequência de escrita dos arquivos de ritmo em
+`~/.motor_pncp/` (o que é contrato é `Config.pasta_ritmo` e a variável
+`MOTOR_PNCP_RITMO` dizerem onde eles ficam), e os
 **valores** dos limiares de `Config` (podem ser recalibrados em patch;
 o que é contrato é o campo existir com o mesmo significado).
+
+Quem lê esses arquivos de fora do motor depende de detalhe interno.
+Quando o motor mudá-los, avisa os dependentes conhecidos, mas sem
+compromisso de versão.
 
 ## 2. Como o número muda (SemVer estrito)
 

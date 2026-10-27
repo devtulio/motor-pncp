@@ -5160,16 +5160,19 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
         <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="1" data-composition-frame-label="motor_pncp — só stdlib" x="10" y="210" width="1300" height="114" rx="12" class="c-region" stroke-width="1"/>
 
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="2" data-composition-frame-label="Máquina — todo processo" x="820" y="50" width="220" height="114" rx="12" class="c-region" stroke-width="1"/>
+
         <!-- Connection paths (before components for correct z-order) -->
         <path data-edge-from="orquestracao" data-edge-to="motor" data-edge-label="chama as fases" data-edge-key="0" data-edge-id="c-chama" data-composition-points="390,144;390,240" d="M 390 144 L 390 240" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="motor" data-edge-to="tipos" data-edge-label="embrulha" data-edge-key="1" data-edge-id="c-tipa" data-composition-points="310,272;200,272" d="M 310 272 L 200 272" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         <path data-edge-from="tipos" data-edge-to="persistencia" data-edge-label="registros" data-edge-key="2" data-edge-id="c-entrega" data-composition-points="120,240;120,144" d="M 120 240 L 120 144" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="motor" data-edge-to="cliente" data-edge-label="GET" data-edge-key="3" data-edge-id="c-http" data-composition-points="470,265;580,265" d="M 470 265 L 580 265" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         <path data-edge-from="cliente" data-edge-to="resiliencia" data-edge-label="sucesso · bloqueio" data-edge-key="4" data-edge-id="c-sinais" data-composition-points="740,272;850,272" d="M 740 272 L 850 272" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="interface" data-edge-to="cliente" data-edge-label="cancelado" data-edge-key="5" data-edge-id="c-controle" data-composition-points="660,144;660,240" d="M 660 144 L 660 240" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="interface" data-edge-to="cliente" data-edge-label="cancelado" data-edge-key="5" data-edge-id="c-controle" data-composition-points="653,144;653,240" d="M 653 144 L 653 240" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
         <path data-edge-from="cliente" data-edge-to="consulta" data-edge-label="HTTPS" data-edge-key="6" data-edge-id="c-consulta" data-composition-points="580,279;525,279;525,432;470,432" d="M 580 279 L 533 279 Q 525 279 525 287 L 525 424 Q 525 432 517 432 L 470 432" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         <path data-edge-from="cliente" data-edge-to="pncp" data-edge-label="HTTPS" data-edge-key="7" data-edge-id="c-pncp" data-composition-points="660,304;660,400" d="M 660 304 L 660 400" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         <path data-edge-from="ipca" data-edge-to="bcb" data-edge-label="HTTPS" data-edge-key="8" data-edge-id="c-bcb" data-composition-points="1200,304;1200,400" d="M 1200 304 L 1200 400" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="cliente" data-edge-to="ritmo" data-edge-label="vez · bloqueio 429" data-edge-key="9" data-edge-id="c-ritmo" data-composition-points="667,240;667,216;826,216;826,112;850,112" d="M 667 240 L 667 224 Q 667 216 675 216 L 818 216 Q 826 216 826 208 L 826 120 Q 826 112 834 112 L 850 112" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
 
         <!-- Components -->
         <g id="node-persistencia" data-node-id="persistencia" data-node-label="Persistência" tabindex="0" role="button" aria-label="Focus Persistência, schema · upsert · marca, Consumidor — fora do motor" aria-pressed="false" data-node-kind="database" data-node-sublabel="schema · upsert · marca" data-node-context="Consumidor — fora do motor">
@@ -5302,6 +5305,20 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <text data-detail="context" x="1200" y="446" class="t-muted" font-size="9" text-anchor="middle">SGS 433 (IPCA)</text>
         </g>
 
+        <g id="node-ritmo" data-node-id="ritmo" data-node-label="Ritmo em disco" tabindex="0" role="button" aria-label="Focus Ritmo em disco, ~/.motor_pncp · por host, Máquina — todo processo" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="~/.motor_pncp · por host" data-node-context="Máquina — todo processo">
+          <title>Ritmo em disco · ~/.motor_pncp · por host · Máquina — todo processo</title>
+          <rect x="850" y="80" width="160" height="64" rx="6" class="c-mask"/>
+          <rect x="850" y="80" width="160" height="64" rx="6" class="c-messagebus" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(856 86) scale(0.6875)">
+            <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/>
+            <circle cx="5" cy="4.5" r="1" class="sigil-fill"/>
+            <circle cx="10.5" cy="8" r="1" class="sigil-fill"/>
+            <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="930" y="110" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Ritmo em disco</text>
+        <text data-detail="context" x="930" y="126" class="t-muted" font-size="9" text-anchor="middle">~/.motor_pncp · por host</text>
+        </g>
+
         <!-- Connection labels -->
         <g data-detail="context" data-edge-from="orquestracao" data-edge-to="motor" data-edge-label="chama as fases" data-edge-key="0" data-edge-id="c-chama">
           <rect x="351.4" y="148" width="77.2" height="14" rx="3" class="c-mask"/>
@@ -5324,8 +5341,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <text x="795" y="262" class="t-muted" font-size="8" text-anchor="middle">sucesso · bloqueio</text>
         </g>
         <g data-detail="context" data-edge-from="interface" data-edge-to="cliente" data-edge-label="cancelado" data-edge-key="5" data-edge-id="c-controle">
-          <rect x="633.4" y="148" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-          <text x="660" y="158" class="t-security" font-size="8" text-anchor="middle">cancelado</text>
+          <rect x="626.4" y="148" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
+          <text x="653" y="158" class="t-security" font-size="8" text-anchor="middle">cancelado</text>
         </g>
         <g data-detail="context" data-edge-from="cliente" data-edge-to="consulta" data-edge-label="HTTPS" data-edge-key="6" data-edge-id="c-consulta">
           <rect x="508" y="335.5" width="34" height="14" rx="3" class="c-mask"/>
@@ -5339,6 +5356,10 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <rect x="1183" y="308" width="34" height="14" rx="3" class="c-mask"/>
           <text x="1200" y="318" class="t-muted" font-size="8" text-anchor="middle">HTTPS</text>
         </g>
+        <g data-detail="context" data-edge-from="cliente" data-edge-to="ritmo" data-edge-label="vez · bloqueio 429" data-edge-key="9" data-edge-id="c-ritmo">
+          <rect x="698.3" y="196" width="96.39999999999999" height="14" rx="3" class="c-mask"/>
+          <text x="746.5" y="206" class="t-messagebus" font-size="8" text-anchor="middle">vez · bloqueio 429</text>
+        </g>
 
         <!-- Boundary labels (foreground masks keep routes out of titles) -->
         <g data-graph-role="structural-frame-label" data-composition-frame-id="0" data-composition-frame-kind="region" data-composition-frame-label="Consumidor — fora do motor">
@@ -5349,6 +5370,11 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <g data-graph-role="structural-frame-label" data-composition-frame-id="1" data-composition-frame-kind="region" data-composition-frame-label="motor_pncp — só stdlib">
           <rect data-graph-role="structural-frame-label-mask" x="14" y="220" width="128.8" height="16" rx="3" class="c-mask"/>
           <text data-boundary-label="" x="18" y="233" class="t-cloud" font-size="9" font-weight="600">motor_pncp — só stdlib</text>
+        </g>
+
+        <g data-graph-role="structural-frame-label" data-composition-frame-id="2" data-composition-frame-kind="region" data-composition-frame-label="Máquina — todo processo">
+          <rect data-graph-role="structural-frame-label-mask" x="824" y="60" width="134.2" height="16" rx="3" class="c-mask"/>
+          <text data-boundary-label="" x="828" y="73" class="t-cloud" font-size="9" font-weight="600">Máquina — todo processo</text>
         </g>
 
         <!-- Legend -->
@@ -5374,9 +5400,13 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <rect x="650" y="507" width="16" height="10" rx="2.5" class="c-security" stroke-width="1"/>
             <text x="672" y="516" class="t-muted" font-size="10" font-weight="500">Resiliência</text>
           </g>
-          <g data-legend-semantic-kind="external" data-legend-kind="external" data-legend-label="Banco Central" data-legend-x="770" data-legend-baseline="516" data-legend-width="108">
-            <rect x="770" y="507" width="16" height="10" rx="2.5" class="c-external" stroke-width="1"/>
-            <text x="792" y="516" class="t-muted" font-size="10" font-weight="500">Banco Central</text>
+          <g data-legend-semantic-kind="messagebus" data-legend-kind="messagebus" data-legend-label="Estado da máquina" data-legend-x="770" data-legend-baseline="516" data-legend-width="128">
+            <rect x="770" y="507" width="16" height="10" rx="2.5" class="c-messagebus" stroke-width="1"/>
+            <text x="792" y="516" class="t-muted" font-size="10" font-weight="500">Estado da máquina</text>
+          </g>
+          <g data-legend-semantic-kind="external" data-legend-kind="external" data-legend-label="Banco Central" data-legend-x="920" data-legend-baseline="516" data-legend-width="108">
+            <rect x="920" y="507" width="16" height="10" rx="2.5" class="c-external" stroke-width="1"/>
+            <text x="942" y="516" class="t-muted" font-size="10" font-weight="500">Banco Central</text>
           </g>
         </g>
       </svg>
@@ -5572,6 +5602,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         </div>
         <ul>
           <li>&bull; HTTP, pacing, retry, repescagem, disjuntor</li>
+          <li>&bull; Ritmo do PNCP dividido entre processos da máquina</li>
           <li>&bull; Registros tipados que embrulham o JSON cru</li>
           <li>&bull; Nenhum SQL, nenhum schema, nenhuma dependência</li>
         </ul>

@@ -24,6 +24,9 @@
         },
         "external": {
           "label": "Banco Central"
+        },
+        "messagebus": {
+          "label": "Estado da máquina"
         }
       }
     }
@@ -168,6 +171,18 @@
         160,
         64
       ]
+    },
+    {
+      "id": "ritmo",
+      "type": "messagebus",
+      "label": "Ritmo em disco",
+      "sublabel": "~/.motor_pncp · por host",
+      "row": 0,
+      "col": 3,
+      "size": [
+        160,
+        64
+      ]
     }
   ],
   "boundaries": [
@@ -189,6 +204,13 @@
         "cliente",
         "resiliencia",
         "ipca"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Máquina — todo processo",
+      "wraps": [
+        "ritmo"
       ]
     }
   ],
@@ -254,6 +276,15 @@
       "to": "bcb",
       "label": "HTTPS",
       "labelDy": 24
+    },
+    {
+      "id": "c-ritmo",
+      "from": "cliente",
+      "to": "ritmo",
+      "label": "vez · bloqueio 429",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "left"
     }
   ],
   "cards": [
@@ -262,6 +293,7 @@
       "title": "Do motor",
       "items": [
         "HTTP, pacing, retry, repescagem, disjuntor",
+        "Ritmo do PNCP dividido entre processos da máquina",
         "Registros tipados que embrulham o JSON cru",
         "Nenhum SQL, nenhum schema, nenhuma dependência"
       ]
