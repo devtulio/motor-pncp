@@ -3,7 +3,7 @@ import time
 from motor_pncp._resiliencia import Adaptativo, Dedup, Disjuntor
 from motor_pncp.configuracao import Config
 
-CFG = Config()
+CFG = Config(conexoes_paralelas=4)  # os degraus 4→2→1 precisam de teto > 2
 
 
 # ── Disjuntor ────────────────────────────────────────────────────────────

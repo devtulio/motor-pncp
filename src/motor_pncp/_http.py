@@ -11,6 +11,7 @@ import http.client
 import json
 import logging
 import random
+import re
 import threading
 import time
 import urllib.error
@@ -19,6 +20,7 @@ import urllib.request
 from datetime import datetime, timezone
 from typing import Literal
 
+from . import _ritmo
 from ._resiliencia import Dedup
 from .configuracao import Config
 from .excecoes import ItensIndisponiveis, PncpErro, SyncCancelado
@@ -45,7 +47,27 @@ HTTP_TRANSITORIOS = (422, 500, 502, 503, 504)
 # errado — bug de desenvolvimento) falha em segundos, com o motivo do corpo
 # na mensagem, em vez de pagar a escada inteira (~5min) pra descobrir.
 TENTATIVAS_422 = 2
+# 429 também retenta pouco: o PNCP pede para PARAR e respeitar o bloqueio,
+# e toda tentativa extra conta no limite. Uma espera do bloqueio inteiro e
+# uma nova tentativa; persistindo, a consulta falha e volta na repescagem.
+TENTATIVAS_429 = 2
 _LIMITE_MOTIVO = 200
+_SUPPORT_ID = re.compile(r"Support ID\D{0,80}?(\d{6,})", re.I)
+
+
+def _corpo(erro):
+    """Corpo da resposta de erro como texto numa linha só ("" se ilegível).
+    Lido UMA vez por erro e guardado — `read()` não devolve duas vezes."""
+    if not hasattr(erro, "_motor_corpo"):
+        try:
+            texto = " ".join(erro.read().decode("utf-8", "replace").split())
+        except Exception:
+            texto = ""
+        try:
+            erro._motor_corpo = texto
+        except Exception:
+            return texto
+    return erro._motor_corpo
 
 
 def _motivo(erro):
@@ -54,15 +76,19 @@ def _motivo(erro):
     O corpo de um 4xx do PNCP costuma trazer o motivo de verdade (ex.:
     "Data inicial inválida ou anterior a 20210401"). Descartá-lo deixa a
     mensagem só com "HTTP 422 em /caminho" — diagnosticar exige reproduzir
-    a chamada à mão.
+    a chamada à mão. Página HTML não informa motivo; dela só se aproveita
+    o Support ID (ver `_support_id`).
     """
-    try:
-        corpo = " ".join(erro.read().decode("utf-8", "replace").split())
-    except Exception:
-        return ""
+    corpo = _corpo(erro)
     if not corpo or corpo.lstrip().startswith("<"):
-        return ""  # página HTML de erro do portal não informa nada
+        return ""
     return f" — {corpo[:_LIMITE_MOTIVO]}"
+
+
+def _support_id(erro):
+    """O número da página "Limite de Requisições Excedido" do PNCP."""
+    m = _SUPPORT_ID.search(_corpo(erro))
+    return m.group(1) if m else None
 
 
 def _espera(tentativa):
@@ -102,6 +128,23 @@ def _retry_after(headers, teto):
     return max(0.0, min(float(segundos), teto))
 
 
+_RITMOS = {}
+_RITMOS_TRAVA = threading.Lock()
+
+
+def _ritmo_para(config):
+    """Um `Ritmo` por pasta, compartilhado por todo Cliente do processo
+    (o Motor e o `ipca` têm clientes próprios, mas o limite é por IP).
+    Sem ritmo compartilhado, cada Cliente tem o seu, só em memória."""
+    if not config.ritmo_compartilhado:
+        return _ritmo.Ritmo(None)
+    pasta = str(config.pasta_ritmo or _ritmo.pasta_padrao())
+    with _RITMOS_TRAVA:
+        if pasta not in _RITMOS:
+            _RITMOS[pasta] = _ritmo.Ritmo(pasta)
+        return _RITMOS[pasta]
+
+
 class Cliente:
     """Uma conexão lógica com o PNCP — pacing e retry por instância, não
     de módulo, para não vazar estado entre coletas."""
@@ -114,8 +157,12 @@ class Cliente:
         self._user_agent = user_agent
         self._progresso = progresso
         self._cancelado = cancelado
-        self._ultima_req = 0.0
-        self._trava_pacing = threading.Lock()
+        self._ritmo = _ritmo_para(config)
+
+    def _intervalo(self, url_base):
+        if "/api/consulta" in url_base:
+            return self._config.intervalo_consulta
+        return self._config.intervalo_min
 
     def _timeout(self, tentativa):
         timeouts = self._config.timeouts
@@ -207,16 +254,11 @@ class Cliente:
         for tentativa in range(tentativas):
             self._checar_cancelado()
             if pacing:
-                # uma trava por Cliente, valendo também pras threads em
-                # paralelo: o intervalo mínimo é entre requisições ao
-                # portal, não por conexão — sem isso, 4 threads sem pacing
-                # eram 4 rajadas simultâneas contra um host com throttling
-                with self._trava_pacing:
-                    espera = (self._config.intervalo_min
-                             - (time.monotonic() - self._ultima_req))
-                    if espera > 0:
-                        self._dormir(espera)
-                    self._ultima_req = time.monotonic()
+                # intervalo por HOST, valendo entre threads e (com ritmo
+                # compartilhado) entre processos — o PNCP limita por IP; e
+                # se um 429 abriu bloqueio, espera ele acabar
+                self._ritmo.aguardar(_ritmo.chave_do_host(url_base),
+                                     self._intervalo(url_base), self._dormir)
             inicio = time.monotonic()
             try:
                 req = urllib.request.Request(
@@ -251,14 +293,21 @@ class Cliente:
                         "vazia") from e
                 if e.code in (204, 404):
                     return None  # sem registros para o filtro
-                if e.code == 429 and tentativa < tentativas - 1:
+                if e.code == 429:
+                    sid = _support_id(e)
+                    _log.warning("HTTP 429 em %s tentativa=%d support_id=%s", caminho,
+                                 tentativa + 1, sid or "-")
+                if e.code == 429 and tentativa < min(tentativas, TENTATIVAS_429) - 1:
                     pedido = _retry_after(e.headers, self._config.retry_after_teto)
-                    # sem header: espera conservadora (5, 10, 15s…) com
-                    # sorteio na metade de cima — piso de 429 não pode ser 0
-                    espera = (pedido if pedido is not None
-                              else random.uniform(2.5, 5) * (tentativa + 1))
+                    # sem header (o PNCP não manda): o bloqueio inteiro que o
+                    # PNCP informou — repetir antes cai dentro dele e conta
+                    # como novo excesso. O bloqueio vai pro ritmo, então TODO
+                    # processo que compartilha o ritmo espera junto.
+                    espera = pedido if pedido is not None else self._config.bloqueio_429
+                    self._ritmo.bloquear(_ritmo.chave_do_host(url_base), espera,
+                                         self._dormir)
                     retentar("http429", f"PNCP pedindo pra esperar (429) em {caminho}",
-                             espera)
+                             0 if pacing else espera)
                     continue
                 teto = min(tentativas, TENTATIVAS_422) if e.code == 422 else tentativas
                 if e.code in HTTP_TRANSITORIOS and tentativa < teto - 1:
@@ -272,7 +321,11 @@ class Cliente:
                 # diagnosticar sem reproduzir a chamada à mão
                 _log.warning("HTTP %d em %s após %d tentativa(s)", e.code, caminho,
                              tentativa + 1)
-                raise PncpErro(f"HTTP {e.code} em {caminho}{_motivo(e)}") from e
+                sid = _support_id(e)
+                erro = PncpErro(f"HTTP {e.code} em {caminho}{_motivo(e)}"
+                                + (f" (Support ID {sid})" if sid else ""))
+                erro.support_id = sid
+                raise erro from e
             except ValueError as e:
                 # 200 com corpo que não é JSON: o portal devolve página de
                 # erro HTML sob carga. json.loads levanta ValueError, que

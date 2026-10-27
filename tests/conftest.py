@@ -32,6 +32,13 @@ def sem_espera_de_verdade(monkeypatch):
     monkeypatch.setattr("time.sleep", lambda *_: None)
 
 
+@pytest.fixture(autouse=True)
+def ritmo_em_pasta_temporaria(monkeypatch, tmp_path):
+    """O ritmo compartilhado grava em `~/.motor_pncp/` — teste nenhum pode
+    tocar a pasta do usuário nem herdar bloqueio de outro teste."""
+    monkeypatch.setenv("MOTOR_PNCP_RITMO", str(tmp_path / "ritmo"))
+
+
 @pytest.fixture
 def urlopen_fake(monkeypatch):
     """Substitui `urllib.request.urlopen` por uma fila de respostas/exceções

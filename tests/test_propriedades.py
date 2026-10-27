@@ -11,8 +11,13 @@ from conftest import resposta_json
 
 from motor_pncp._http import Cliente
 from motor_pncp._resiliencia import Adaptativo
+from motor_pncp.configuracao import Config
 from motor_pncp.dominio import janelas
 from motor_pncp.motor import Motor
+
+# milhares de requisições falsas: o ritmo em arquivo (correto em produção,
+# ~1 ms diante de segundos de rede) só deixaria o teste lento
+SEM_ARQUIVO = Config(ritmo_compartilhado=False)
 
 SEMENTE = 20260908  # reprodutível; troque pra explorar
 AMOSTRAS = 500
@@ -69,7 +74,7 @@ def _paginas(total, tamanho, campo):
 
 def test_paginar_devolve_todos_os_registros_uma_vez(urlopen_fake):
     rng = random.Random(SEMENTE)
-    cliente = Cliente(Adaptativo())
+    cliente = Cliente(Adaptativo(SEM_ARQUIVO), config=SEM_ARQUIVO)
     for _ in range(AMOSTRAS):
         total = rng.randint(0, 1200)
         tamanho = rng.choice([1, 7, 50, 100, 500])
@@ -85,7 +90,7 @@ def test_paginar_devolve_todos_os_registros_uma_vez(urlopen_fake):
 
 def test_itens_da_compra_devolve_todos_os_itens_uma_vez(urlopen_fake):
     rng = random.Random(SEMENTE)
-    motor = Motor()
+    motor = Motor(config=SEM_ARQUIVO)
     for _ in range(AMOSTRAS // 5):
         total = rng.randint(0, 450)
         paginas = [[{"numeroItem": i} for i in range(p, min(p + 100, total))]

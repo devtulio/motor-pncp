@@ -190,19 +190,23 @@ medidos contra o PNCP real como default.
 
 | Campo | Default | O que é |
 |---|---|---|
-| `conexoes_paralelas` | `4` | Requisições simultâneas com o portal saudável. |
+| `conexoes_paralelas` | `1` | Requisições simultâneas com o portal saudável. O PNCP pede chamadas em sequência; o paralelismo adaptativo nunca passa deste teto. |
 | `janela_eventos` | `120` (s) | Só bloqueios/sucessos dentro desta janela contam pra decidir paralelismo/tentativas. |
 | `taxa_recuo` | `0.2` | Fração de bloqueios recentes acima da qual já vale recuar. |
 | `taxa_tregua` | `0.5` | Fração acima da qual o portal está recusando mais do que respondendo. |
 | `tentativas_padrao` | `5` | Tentativas por requisição em condição normal. |
 | `tentativas_curtas` | `2` | Tentativas quando um storm já está confirmado. |
 | `timeouts` | `(30,45,60,75,90)` | Timeout de cada tentativa sucessiva. |
-| `intervalo_min` | `0.5` (s) | Intervalo mínimo entre requisições ao portal — vale também entre as threads em paralelo (é por host, não por conexão). |
+| `intervalo_min` | `1.1` (s) | Intervalo mínimo entre requisições ao mesmo host, exceto a API de Consulta. Vale entre threads e, com `ritmo_compartilhado`, entre processos. |
+| `intervalo_consulta` | `3.0` (s) | Intervalo mínimo na API de Consulta (`/api/consulta`), que tem limites mais apertados. |
+| `bloqueio_429` | `40` (s) | Espera depois de um HTTP 429 sem `Retry-After`; vale para todo processo que compartilha o ritmo. |
+| `ritmo_compartilhado` | `True` | Coordena intervalo e bloqueio entre processos da mesma máquina, por arquivo em `~/.motor_pncp/`. |
+| `pasta_ritmo` | `None` | Onde ficam esses arquivos; `None` = variável `MOTOR_PNCP_RITMO` ou `~/.motor_pncp/`. |
 | `retry_after_teto` | `120` (s) | Teto do que o portal pede em `Retry-After` (429 e 503). |
 | `falhas_consecutivas_limite` | `5` | Falhas seguidas a partir das quais o disjuntor passa a olhar o tempo sem sucesso. |
 | `sem_sucesso_limite` | `600` (s) | Combinado com o limite acima, quando o disjuntor desiste da fase (falha lenta). |
 | `falhas_seguidas_teto` | `40` | Teto absoluto: desiste mesmo com o relógio aberto. Cobre a falha barata (escada curta durante storm), em que só o tempo deixaria mastigar a fila inteira. |
-| `repescagem_pausa` | `30` (s) | Espera antes de repetir, uma única vez, as consultas que falharam numa fase em lote. Só corre quando houve falha. |
+| `repescagem_pausa` | `45` (s) | Espera antes de repetir, uma única vez, as consultas que falharam numa fase em lote. Só corre quando houve falha. |
 | `janela_operacional` | `300` (s) | Avisos de retry da mesma causa ficam agrupados dentro desta janela. |
 
 ```python
@@ -381,6 +385,49 @@ coleta (exceto `SyncCancelado`, que para tudo); e ele é chamado sempre da
 thread que está iterando o gerador, nunca das threads que buscam os
 resultados — dá pra gravar no banco de dentro dele sem se preocupar com
 conexão por thread.
+
+### Ritmo: o que o PNCP pede, e como o motor cumpre
+
+Em resposta oficial a um chamado (outubro de 2026), o PNCP informou os
+limites de requisição — **por IP de origem**, sem dizer qual endpoint é de
+qual classe:
+
+| Classe | Limite | Bloqueio ao estourar |
+|---|---|---|
+| Consulta, "urgentes" | 5 requisições a cada 15 s | 40 s |
+| Consulta, "prioritários" | 5 a cada 5 s | 20 s |
+| Consulta, "gerais" | 50 a cada 10 s | 10 s |
+| Integração (`/api/pncp`) | 150 a cada 10 s | 5 s |
+
+E pediu: chamadas em sequência, sem paralelismo, com mais de 1 s entre
+elas; ao receber 429, parar e respeitar o bloqueio, sem retentativa
+imediata; contar as tentativas extras como requisições. O 429 vem como
+página HTML com um "Support ID" e **sem** `Retry-After`.
+
+Desde a 1.8.0 o motor faz isso sozinho, com os valores padrão:
+
+- uma conexão (`conexoes_paralelas=1`);
+- 3 s entre chamadas à Consulta e 1,1 s à Integração, contados por host;
+- num 429, espera 40 s e tenta **uma** vez mais; persistindo, a consulta
+  falha e volta na repescagem (45 s depois) ou no `refazer`;
+- o Support ID vai para `PncpErro.support_id`, para a mensagem do erro e
+  para o log. Guarde-o: é o que o suporte do PNCP pede numa reclamação.
+
+**Entre processos.** Como o limite é por IP, uma sincronização e um
+monitor rodando juntos na mesma máquina somavam requisições sem se ver.
+Com `ritmo_compartilhado=True` (padrão), o intervalo e o bloqueio do 429
+ficam num arquivo pequeno por host em `~/.motor_pncp/`, travado pelo
+sistema operacional: todo processo que usa o motor espera a vez dos
+outros, e um 429 recebido por qualquer um faz todos pararem. Processo que
+morre não deixa trava presa. Se a pasta não puder ser usada, o motor
+volta ao ritmo só do processo e avisa no log.
+
+O que isso não cobre: outro computador atrás do mesmo IP público, e
+script que fala com o PNCP sem passar pelo motor.
+
+O custo é tempo: uma consulta à API de Consulta a cada 3 s. Na prática o
+portal costuma demorar mais do que isso para responder, e a diferença é
+pequena.
 
 ### Cancelamento cooperativo
 

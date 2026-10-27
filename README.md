@@ -48,7 +48,7 @@ from motor_pncp import Motor, Config, PncpErro
 
 # limiares de resiliência são configuráveis — o default é o medido
 # contra o PNCP real; um sistema com perfil diferente ajusta aqui
-motor = Motor(progresso=print, config=Config(conexoes_paralelas=6))
+motor = Motor(progresso=print, config=Config(sem_sucesso_limite=180))
 
 # fase 1 — contratações de um município
 total = 0
@@ -90,7 +90,7 @@ Instalação em cada sistema consumidor — **pinada numa tag**, nunca em
 sistema sem você pedir):
 
 ```bash
-pip install "git+https://github.com/devtulio/motor-pncp.git@v1.7.0"
+pip install "git+https://github.com/devtulio/motor-pncp.git@v1.8.0"
 ```
 
 Em modo editável durante o desenvolvimento do próprio motor:
@@ -137,6 +137,9 @@ Cada um destes virou uma decisão concreta no motor; quem consome herda.
 - **Falha parcial não custa a janela inteira.** Uma consulta barrada
   entre dezenas é repetida sozinha e, se persistir, é nomeada no erro
   (`consultas_falhas`) pra ser refeita sozinha (`refazer`).
+- **Ritmo de quem pede licença.** Sem paralelismo, intervalo por host,
+  pausa inteira no 429 e coordenação entre processos da mesma máquina —
+  o que o PNCP pediu, porque o limite dele é por IP.
 - **Nunca ficar mudo.** Toda espera de retry avisa (`progresso`), com
   avisos da mesma causa agrupados por janela pra não inundar.
 - **Parar cedo de verdade.** Gerador fechado no meio não espera as

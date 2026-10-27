@@ -5212,15 +5212,15 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <text data-detail="context" x="286" y="131" class="t-muted" font-size="8" text-anchor="middle">Event, a cada tentativa</text>
         </g>
 
-        <g id="node-pacing" data-node-id="pacing" data-node-label="Pacing" tabindex="0" role="button" aria-label="Focus Pacing, intervalo_min por host, Tentativa" aria-pressed="false" data-node-kind="backend" data-node-sublabel="intervalo_min por host" data-node-context="Tentativa">
-          <title>Pacing · intervalo_min por host · Tentativa</title>
+        <g id="node-pacing" data-node-id="pacing" data-node-label="Pacing" tabindex="0" role="button" aria-label="Focus Pacing, por host · entre processos, Tentativa" aria-pressed="false" data-node-kind="backend" data-node-sublabel="por host · entre processos" data-node-context="Tentativa">
+          <title>Pacing · por host · entre processos · Tentativa</title>
           <rect x="455.6" y="93" width="140" height="52" rx="6" class="c-mask"/>
           <rect x="455.6" y="93" width="140" height="52" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(461.6 99) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="525.6" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Pacing</text>
-          <text data-detail="context" x="525.6" y="131" class="t-muted" font-size="8" text-anchor="middle">intervalo_min por host</text>
+          <text data-detail="context" x="525.6" y="131" class="t-muted" font-size="8" text-anchor="middle">por host · entre processos</text>
         </g>
 
         <g id="node-urlopen" data-node-id="urlopen" data-node-label="urlopen" tabindex="0" role="button" aria-label="Focus urlopen, timeout 30 → 90 s, Tentativa" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="timeout 30 → 90 s" data-node-context="Tentativa">
@@ -5257,8 +5257,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <text data-detail="context" x="118" y="255" class="t-muted" font-size="8" text-anchor="middle">para na hora</text>
         </g>
 
-        <g id="node-espera" data-node-id="espera" data-node-label="Espera" tabindex="0" role="button" aria-label="Focus Espera, Retry-After ou jitter, Falha e retry" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="Retry-After ou jitter" data-node-context="Falha e retry">
-          <title>Espera · Retry-After ou jitter · Falha e retry</title>
+        <g id="node-espera" data-node-id="espera" data-node-label="Espera" tabindex="0" role="button" aria-label="Focus Espera, 429: bloqueio de 40 s, Falha e retry" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="429: bloqueio de 40 s" data-node-context="Falha e retry">
+          <title>Espera · 429: bloqueio de 40 s · Falha e retry</title>
           <rect x="216" y="217" width="140" height="52" rx="6" class="c-mask"/>
           <rect x="216" y="217" width="140" height="52" rx="6" class="c-messagebus" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="messagebus" class="semantic-sigil s-messagebus" transform="translate(222 223) scale(0.6875)">
@@ -5268,7 +5268,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <circle cx="7" cy="11.5" r="1" class="sigil-fill"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="286" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Espera</text>
-          <text data-detail="context" x="286" y="255" class="t-muted" font-size="8" text-anchor="middle">Retry-After ou jitter</text>
+          <text data-detail="context" x="286" y="255" class="t-muted" font-size="8" text-anchor="middle">429: bloqueio de 40 s</text>
         </g>
 
         <g id="node-transitoria" data-node-id="transitoria" data-node-label="Transitória" tabindex="0" role="button" aria-label="Focus Transitória, conta como bloqueio, Falha e retry" aria-pressed="false" data-node-kind="messagebus" data-node-sublabel="conta como bloqueio" data-node-context="Falha e retry">
@@ -5582,8 +5582,9 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <h3>Espera</h3>
         </div>
         <ul>
-          <li>&bull; Backoff: sorteio em [0, 2^tentativa] (full jitter)</li>
-          <li>&bull; Retry-After vale em 429 e 503, com teto retry_after_teto</li>
+          <li>&bull; 429 sem Retry-After: espera 40 s e tenta uma vez mais</li>
+          <li>&bull; O bloqueio vale para todo processo da máquina</li>
+          <li>&bull; 5xx e rede: sorteio em [0, 2^tentativa] (full jitter)</li>
           <li>&bull; A espera acorda se cancelado for acionado</li>
         </ul>
       </div>

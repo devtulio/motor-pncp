@@ -12,6 +12,10 @@ class PncpErro(Exception):
     """
 
     consultas_falhas: list = []
+    support_id: str | None = None
+    """Número que o PNCP mostra na página de erro do 429 ("Seu Support ID
+    é ..."). Guarde-o: é o que o suporte do PNCP pede para investigar uma
+    reclamação. `None` quando a resposta não trouxe."""
 
 
 class SyncCancelado(Exception):

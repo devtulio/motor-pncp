@@ -283,14 +283,16 @@ def test_503_honra_retry_after(urlopen_fake, monkeypatch):
     assert 9 in dormidas
 
 
-def test_429_sem_header_nunca_espera_zero(urlopen_fake, monkeypatch):
+def test_429_sem_header_espera_o_bloqueio_inteiro(urlopen_fake, monkeypatch):
+    """O PNCP não manda Retry-After e pede para PARAR e respeitar o
+    bloqueio (até 40 s); repetir antes cai dentro dele e conta como
+    excesso."""
     dormidas = []
     monkeypatch.setattr(Cliente, "_dormir", lambda self, s: dormidas.append(s))
     urlopen_fake.append(erro_http(429))
     urlopen_fake.append(resposta_json({"ok": True}))
     cliente().get("https://x", "/y", {}, tentativas=3)
-    assert any(2.5 <= d <= 5 for d in dormidas)  # o resto e pacing
-
+    assert any(d >= 39 for d in dormidas)
 
 def test_pacing_vale_em_paralelo(urlopen_fake, monkeypatch):
     """Intervalo minimo e por host, nao por thread: 4 threads sem pacing

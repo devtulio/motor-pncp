@@ -102,7 +102,7 @@
       "col": 3,
       "type": "messagebus",
       "label": "Repescagem",
-      "sublabel": "pausa 30 s, uma vez",
+      "sublabel": "pausa 45 s, uma vez",
       "width": 140
     },
     {

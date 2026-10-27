@@ -67,7 +67,10 @@ class Adaptativo:
             return cfg.conexoes_paralelas
         if n >= 3 and taxa >= cfg.taxa_tregua:
             return 1
-        return 2
+        # o degrau intermediário é 2, mas nunca acima do teto: com
+        # conexoes_paralelas=1 (o pedido do PNCP), "recuar" para 2 era
+        # AUMENTAR o paralelismo justamente quando o portal reclamava
+        return min(2, cfg.conexoes_paralelas)
 
     def tentativas_atual(self):
         """Encurta a escada de retry quando um storm já está confirmado,

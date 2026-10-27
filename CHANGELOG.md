@@ -2,6 +2,41 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
+## [1.8.0] — 2026-10-27
+
+O PNCP respondeu a um chamado com os limites de requisição, por IP de
+origem: na API de Consulta, até 5 requisições a cada 15 s na classe mais
+restrita (bloqueio de 40 s); na de Integração, 150 a cada 10 s. Pediu
+chamadas em sequência, sem paralelismo, com mais de 1 s entre elas, e
+parar no 429 em vez de retentar. O motor não cumpria quatro desses pontos.
+
+### Added
+- **Ritmo entre processos** (`Config.ritmo_compartilhado`, padrão
+  `True`; `Config.pasta_ritmo`): intervalo e bloqueio do 429 guardados num
+  arquivo por host em `~/.motor_pncp/`, travado pelo sistema operacional —
+  dois processos na mesma máquina não somam mais requisições sem se ver.
+  Sem permissão no disco, volta ao ritmo do processo e avisa no log.
+- `Config.intervalo_consulta` (3 s) e `Config.bloqueio_429` (40 s).
+- `PncpErro.support_id`: o número da página de erro do 429, também na
+  mensagem e no log — é o que o suporte do PNCP pede.
+
+### Changed
+- Padrões: `conexoes_paralelas` 4 → **1**; `intervalo_min` 0,5 → **1,1 s**
+  (agora vale para todo host exceto a Consulta); `repescagem_pausa`
+  30 → **45 s**.
+- Intervalo contado **por host**: Consulta e Integração não esperam uma
+  pela outra.
+- 429 sem `Retry-After`: espera o bloqueio inteiro (40 s) e tenta uma vez
+  só; antes eram 2,5 a 5 s × tentativa, até 5 tentativas, dentro do
+  bloqueio.
+- O custo é tempo: uma chamada à Consulta a cada 3 s, em vez de 0,5 s.
+
+### Fixed
+- Com `conexoes_paralelas=1`, o paralelismo adaptativo **subia para 2**
+  quando o portal começava a recusar — o degrau intermediário era fixo.
+  Agora nunca passa do teto configurado.
+- `Config` recusa `conexoes_paralelas < 1` e intervalos negativos.
+
 ## [1.7.0] — 2026-10-22
 
 Um consumidor vai observar órgãos específicos fora do seu acervo

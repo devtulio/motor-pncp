@@ -78,7 +78,7 @@
       "col": 2,
       "type": "backend",
       "label": "Pacing",
-      "sublabel": "intervalo_min por host",
+      "sublabel": "por host · entre processos",
       "width": 140
     },
     {
@@ -114,7 +114,7 @@
       "col": 1,
       "type": "messagebus",
       "label": "Espera",
-      "sublabel": "Retry-After ou jitter",
+      "sublabel": "429: bloqueio de 40 s",
       "width": 140
     },
     {
@@ -242,8 +242,9 @@
       "dot": "amber",
       "title": "Espera",
       "items": [
-        "Backoff: sorteio em [0, 2^tentativa] (full jitter)",
-        "Retry-After vale em 429 e 503, com teto retry_after_teto",
+        "429 sem Retry-After: espera 40 s e tenta uma vez mais",
+        "O bloqueio vale para todo processo da máquina",
+        "5xx e rede: sorteio em [0, 2^tentativa] (full jitter)",
         "A espera acorda se cancelado for acionado"
       ]
     },
