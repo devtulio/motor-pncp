@@ -382,3 +382,21 @@ def test_caminho_e_escapado_mas_barras_ficam(monkeypatch):
     monkeypatch.setattr(urllib.request, "urlopen", fake)
     cliente().get("https://x", "/v1/orgaos/123?x=1#frag /itens", {"pagina": 1})
     assert vistas == ["https://x/v1/orgaos/123%3Fx%3D1%23frag%20/itens?pagina=1"]
+
+
+def test_404_sem_registros_aparece_no_log(urlopen_fake, caplog):
+    # quem conta chamadas pelo log não pode perder a que voltou vazia
+    import logging
+    urlopen_fake.append(erro_http(404))
+    with caplog.at_level(logging.DEBUG, logger="motor_pncp"):
+        assert cliente().get("https://pncp.gov.br/api/pncp", "/v1/x", {}) is None
+    assert any("GET pncp.gov.br/api/pncp/v1/x status=404" in m for m in caplog.messages)
+
+
+def test_warning_final_traz_o_host(urlopen_fake, caplog):
+    import logging
+    urlopen_fake.extend([erro_http(503), erro_http(503)])
+    with caplog.at_level(logging.WARNING, logger="motor_pncp"):
+        with pytest.raises(PncpErro):
+            cliente().get("https://pncp.gov.br/api/pncp", "/v1/x", {}, tentativas=2)
+    assert any("HTTP 503 em pncp.gov.br/api/pncp/v1/x" in m for m in caplog.messages)

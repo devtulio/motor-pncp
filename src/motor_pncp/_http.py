@@ -283,19 +283,25 @@ class Cliente:
                     return json.loads(corpo) if corpo.strip() else None
             except urllib.error.HTTPError as e:
                 if e.code == 404 and modo_404 == "erro":
+                    _log.debug("GET %s status=404 tentativa=%d (itens indisponíveis)",
+                               rota, tentativa + 1)
                     raise ItensIndisponiveis(f"HTTP 404 em {caminho}") from e
                 if e.code == 404 and modo_404 == "retry":
                     if tentativa < tentativas - 1:
                         retentar("http404", f"PNCP com HTTP 404 em {caminho}",
                                  _espera(tentativa))
                         continue
-                    _log.warning("HTTP 404 persistente em %s", caminho)
+                    _log.warning("HTTP 404 persistente em %s", rota)
                     raise PncpErro(
                         f"HTTP 404 persistente em {caminho} — listagem não "
                         "responde; abortando para não gravar a janela como "
                         "vazia") from e
                 if e.code in (204, 404):
-                    return None  # sem registros para o filtro
+                    # sem registros para o filtro — loga como o GET de
+                    # sucesso, senão a chamada some de quem conta pelo log
+                    _log.debug("GET %s status=%d tentativa=%d (sem registros)",
+                               rota, e.code, tentativa + 1)
+                    return None
                 if e.code == 429:
                     sid = _support_id(e)
                     _log.warning("HTTP 429 em %s tentativa=%d support_id=%s", rota,
@@ -322,7 +328,7 @@ class Cliente:
                 # o corpo do 4xx do PNCP costuma trazer o motivo de
                 # verdade — descartá-lo deixa só o código, sem nada pra
                 # diagnosticar sem reproduzir a chamada à mão
-                _log.warning("HTTP %d em %s após %d tentativa(s)", e.code, caminho,
+                _log.warning("HTTP %d em %s após %d tentativa(s)", e.code, rota,
                              tentativa + 1)
                 sid = _support_id(e)
                 erro = PncpErro(f"HTTP {e.code} em {caminho}{_motivo(e)}"
@@ -341,7 +347,7 @@ class Cliente:
                              _espera(tentativa))
                     continue
                 _log.warning("resposta ilegível em %s após %d tentativa(s)",
-                             caminho, tentativa + 1)
+                             rota, tentativa + 1)
                 raise PncpErro(
                     f"o PNCP devolveu resposta ilegível em {caminho} "
                     f"(não era JSON: {e})") from e
@@ -357,7 +363,7 @@ class Cliente:
                              f"({type(e).__name__})",
                              _espera(tentativa))
                     continue
-                _log.warning("rede em %s após %d tentativa(s): %s", caminho,
+                _log.warning("rede em %s após %d tentativa(s): %s", rota,
                              tentativa + 1, type(e).__name__)
                 # "sem conexão" faz o usuário procurar defeito na internet
                 # dele; o que costuma acontecer de fato é o portal demorar

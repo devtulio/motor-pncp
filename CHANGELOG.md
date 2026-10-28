@@ -2,6 +2,16 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
+## [1.8.2] — 2026-10-28
+
+### Fixed
+- As linhas `WARNING` de tentativas esgotadas (`HTTP %d`, rede, resposta
+  ilegível, 404 persistente) ainda traziam só o caminho; agora trazem
+  host e caminho, como as de `GET`, `retry` e 429 desde a 1.8.1.
+- Resposta 204/404 "sem registros" (e o 404 de itens indisponíveis)
+  voltava sem nenhuma linha de log, e essa chamada sumia de quem conta
+  requisições pelo log. Agora gera uma linha `DEBUG` `GET ... status=404`.
+
 ## [1.8.1] — 2026-10-27
 
 ### Fixed

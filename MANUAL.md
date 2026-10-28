@@ -464,9 +464,15 @@ logging.getLogger("motor_pncp").setLevel(logging.DEBUG)
 pncp.gov.br/api/consulta/v1/contratacoes/publicacao status=200
 tentativa=1 0.84s`) e por retry (`retry pncp.gov.br/api/pncp/v1/...
 tentativa=2 causa=http503 espera=3.1s`) — host e caminho, para separar
-Consulta de Integração. `WARNING`: uma linha quando as tentativas se
-esgotam e uma por HTTP 429 (`HTTP 429 em <host/caminho> tentativa=1
-support_id=...`). O callback `progresso` continua sendo o canal pra UI; o log
+Consulta de Integração; também quando o portal responde 204/404 "sem
+registros" (`... status=404 tentativa=1 (sem registros)`). `WARNING`: uma
+linha quando as tentativas se esgotam e uma por HTTP 429 (`HTTP 429 em
+<host/caminho> tentativa=1 support_id=...`), também com host e caminho.
+
+Para contar chamadas por host pelo log: cada requisição que sai termina
+em exatamente uma linha `GET`, uma `retry` ou um `WARNING` de tentativas
+esgotadas. O `WARNING` de 429 é extra: um 429 que vai ser repetido gera
+também a linha `retry`, então não conte os dois. O callback `progresso` continua sendo o canal pra UI; o log
 é pra diagnóstico e métricas.
 
 ### Falha parcial: repita só o que falhou
