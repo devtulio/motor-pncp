@@ -126,6 +126,12 @@ Planos de Contratação Anual de um órgão atualizados na janela. Usa
 `dataFinal`) e ajusta `inicio` para `DATA_INICIO_PCA` se vier anterior —
 o endpoint rejeita datas mais antigas.
 
+A janela filtra pela data de atualização do **plano**, não do item. Item
+alterado sem mover a data do plano não aparece no incremental (medido em
+17/11/2026: janela de 04–07/11 devolveu 0 planos com itens alterados em
+04–06/11). Para pegar essas alterações, use janela larga ou releia o plano
+inteiro de vez em quando — a cadência é decisão sua.
+
 ### `consultar_orgao(cnpj) -> Orgao | None`
 
 Registro do CNPJ no PNCP — `None` se o CNPJ não existe no portal.
