@@ -78,6 +78,8 @@ for ata in motor.atas(cnpj, inicio, date.today()):
 for plano in motor.pca(cnpj, inicio, date.today()):
     for item_pca in plano.itens:  # achatar em linhas é decisão sua
         meu_upsert_pca(plano, item_pca)
+# atenção: a janela do PCA filtra pela data do PLANO; item alterado sem
+# mexer na data do plano não aparece no incremental (medido em 17/11/2026)
 
 # termos aditivos — fase opcional sobre contratos já sincronizados
 for contrato, termos in motor.termos_aditivos(meus_contratos_pendentes):

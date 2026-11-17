@@ -348,7 +348,11 @@ class Motor:
 
     def pca(self, cnpj, inicio: date, fim: date) -> Iterator[PlanoPca]:
         """Gera `PlanoPca` (Plano de Contratações Anual) de um órgão
-        atualizados na janela.
+        cuja data de atualização do PLANO cai na janela. Alteração só de
+        item que não move a data do plano não aparece: janela de
+        04–07/11/2026 devolveu 0 planos com itens alterados em 04–06/11
+        (medido em 17/11/2026). Pegar item alterado exige janela larga ou leitura
+        do plano inteiro — decisão do consumidor.
 
         Este endpoint usa `dataInicio`/`dataFim` — os demais usam
         `dataInicial`/`dataFinal` (verificado contra a API real,
