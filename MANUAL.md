@@ -204,7 +204,7 @@ medidos contra o PNCP real como default.
 | `tentativas_curtas` | `2` | Tentativas quando um storm já está confirmado. |
 | `timeouts` | `(30,45,60,75,90)` | Timeout de cada tentativa sucessiva. |
 | `intervalo_min` | `1.1` (s) | Intervalo mínimo entre requisições ao mesmo host, exceto a API de Consulta. Vale entre threads e, com `ritmo_compartilhado`, entre processos. |
-| `intervalo_consulta` | `3.0` (s) | Intervalo mínimo na API de Consulta (`/api/consulta`), que tem limites mais apertados. |
+| `intervalo_consulta` | `3.0` (s) | Intervalo mínimo na API de Consulta (`/api/consulta`), que tem limites mais apertados (mapa abaixo). |
 | `bloqueio_429` | `40` (s) | Espera depois de um HTTP 429 sem `Retry-After`; vale para todo processo que compartilha o ritmo. |
 | `ritmo_compartilhado` | `True` | Coordena intervalo e bloqueio entre processos da mesma máquina, por arquivo em `~/.motor_pncp/`. |
 | `pasta_ritmo` | `None` | Onde ficam esses arquivos; `None` = variável `MOTOR_PNCP_RITMO` ou `~/.motor_pncp/`. |
@@ -214,6 +214,19 @@ medidos contra o PNCP real como default.
 | `falhas_seguidas_teto` | `40` | Teto absoluto: desiste mesmo com o relógio aberto. Cobre a falha barata (escada curta durante storm), em que só o tempo deixaria mastigar a fila inteira. |
 | `repescagem_pausa` | `45` (s) | Espera antes de repetir, uma única vez, as consultas que falharam numa fase em lote. Só corre quando houve falha. |
 | `janela_operacional` | `300` (s) | Avisos de retry da mesma causa ficam agrupados dentro desta janela. |
+
+**Limites do PNCP por endpoint** (resposta oficial de 24/11/2026). O motor
+usa um intervalo por host, que cabe na classe mais restrita de cada um:
+
+| Endpoint | Limite | Bloqueio após 429 |
+|---|---|---|
+| Consulta: `/v1/contratacoes/publicacao`, `/v1/orgaos/{cnpj}/compras/{ano}/{seq}` | 5 req / 15 s | 40 s |
+| Consulta: `/v1/contratacoes/proposta`, `/v1/contratacoes/atualizacao`, `/v1/atas`, `/v1/atas/atualizacao`, `/v1/contratos`, `/v1/contratos/atualizacao`, `/v1/pca/`, `/v1/pca/usuario`, `/v1/pca/atualizacao` | 5 req / 5 s | 20 s |
+| Integração (itens, resultados) | 150 req / 10 s | 5 s |
+
+O PNCP não recomenda horário nem frequência única, e não tem carga em
+massa nem feed de mudanças: para acompanhar alterações, releia a janela
+desde a última coleta e use `data_atualizacao_global`.
 
 ```python
 from motor_pncp import Motor, Config

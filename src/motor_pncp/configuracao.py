@@ -45,17 +45,28 @@ class Config:
     entre threads e — com `ritmo_compartilhado` — entre processos. Vale
     para todo host exceto a API de Consulta (ver `intervalo_consulta`):
     a API de Integração do PNCP (itens, resultados, órgão) tem o limite
-    mais folgado (150 req/10 s) e o PNCP pede espaçamento acima de 1 s."""
+    mais folgado (150 req/10 s, bloqueio de 5 s, conforme o mapa por
+    endpoint que o PNCP mandou em 24/11/2026). 1,1 s fica bem abaixo
+    disso (~13% do teto com 0,5 s; ~6% com 1,1 s)."""
 
     intervalo_consulta: float = 3.0
     """Intervalo mínimo na API de Consulta (`/api/consulta`). O PNCP
-    informou três classes de limite ali (5 req/15 s, 5 req/5 s e
-    50 req/10 s) sem dizer qual endpoint é de qual; 3 s cabe na mais
-    restrita."""
+    informou o limite por endpoint em 24/11/2026:
+
+    - 5 req/15 s, bloqueio de 40 s: `/v1/contratacoes/publicacao` e o
+      detalhe `/v1/orgaos/{cnpj}/compras/{ano}/{seq}`;
+    - 5 req/5 s, bloqueio de 20 s: `/v1/contratacoes/proposta`,
+      `/v1/contratacoes/atualizacao`, `/v1/atas`, `/v1/atas/atualizacao`,
+      `/v1/contratos`, `/v1/contratos/atualizacao`, `/v1/pca/`,
+      `/v1/pca/usuario` e `/v1/pca/atualizacao`.
+
+    Um intervalo só para o host inteiro: 3 s cabe na classe mais
+    restrita. O PNCP não recomenda horário nem frequência única."""
 
     bloqueio_429: float = 40
     """Segundos de espera depois de um HTTP 429 sem `Retry-After` (o PNCP
-    não manda o header). É o maior bloqueio que o PNCP informou; repetir
+    não manda o header). É o maior bloqueio que o PNCP informou (40 s
+    na classe 5 req/15 s; 20 s nas de 5 req/5 s; 5 s na Integração); repetir
     antes disso cai dentro do bloqueio e conta como novo excesso. Vale
     para todo processo que compartilha o ritmo."""
 
