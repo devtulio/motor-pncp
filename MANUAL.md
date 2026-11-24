@@ -233,12 +233,12 @@ pode ganhar campo novo sem quebrar nada aqui. Precisa de um campo sem
 
 | Tipo | Campos de conveniência |
 |---|---|
-| `Contratacao` | `numero_controle`, `ano`, `sequencial`, `orgao_cnpj`, `orgao_nome`, `unidade_nome`, `modalidade_id`, `situacao`, `objeto`, `valor_estimado`, `valor_homologado`, `data_atualizacao`, `data_publicacao`, `plataforma`, `link_sistema_origem`, `fontes_orcamentarias`, `modo_disputa` |
+| `Contratacao` | `numero_controle`, `ano`, `sequencial`, `orgao_cnpj`, `orgao_nome`, `unidade_nome`, `modalidade_id`, `situacao`, `objeto`, `valor_estimado`, `valor_homologado`, `data_atualizacao`, `data_atualizacao_global`, `data_publicacao`, `plataforma`, `link_sistema_origem`, `fontes_orcamentarias`, `modo_disputa` |
 | `Item` | `numero_item`, `descricao`, `tem_resultado`, `quantidade`, `valor_unitario_estimado`, `valor_total_estimado`, `data_atualizacao`, `situacao`, `tipo_beneficio`, `criterio_julgamento` |
 | `Resultado` | `cancelado`, `fornecedor_ni`, `fornecedor_nome`, `valor_unitario_homologado`, `valor_total_homologado`, `quantidade_homologada`, `data_resultado`, `situacao`, `porte_fornecedor`, `natureza_juridica`, `beneficio_me_epp` |
-| `Contrato` | `numero_controle`, `ano`, `sequencial`, `orgao_cnpj`, `valor_global`, `data_atualizacao` |
-| `Ata` | `numero_controle`, `orgao_cnpj`, `vigencia_inicio`, `vigencia_fim`, `data_publicacao`, `data_atualizacao`, `cancelado`, `data_cancelamento` |
-| `PlanoPca` | `id_pca`, `ano`, `orgao_cnpj`, `itens` (lista crua — achatar em linhas é decisão sua), `data_atualizacao` |
+| `Contrato` | `numero_controle`, `ano`, `sequencial`, `orgao_cnpj`, `valor_global`, `data_atualizacao`, `data_atualizacao_global` |
+| `Ata` | `numero_controle`, `orgao_cnpj`, `vigencia_inicio`, `vigencia_fim`, `data_publicacao`, `data_atualizacao`, `data_atualizacao_global`, `cancelado`, `data_cancelamento` |
+| `PlanoPca` | `id_pca`, `ano`, `orgao_cnpj`, `itens` (lista crua — achatar em linhas é decisão sua), `data_atualizacao`, `data_atualizacao_global` |
 | `TermoAditivo` | `sequencial`, `tipo`, `valor_global`, `valor_acrescido`, `data_assinatura` |
 | `Orgao` | `cnpj`, `razao_social`, `esfera` (`M`/`E`/`F`/`N`) |
 

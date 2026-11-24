@@ -90,6 +90,14 @@ class Contratacao:
         return self.raw.get("dataAtualizacao")
 
     @property
+    def data_atualizacao_global(self) -> str | None:
+        """Data de atualização GLOBAL: muda também quando registros
+        vinculados mudam (itens, resultados, documentos), segundo o PNCP.
+        `data_atualizacao` é só a do próprio registro. Use a global para
+        decidir se vale reler os detalhes."""
+        return self.raw.get("dataAtualizacaoGlobal")
+
+    @property
     def data_publicacao(self) -> str | None:
         return self.raw.get("dataPublicacaoPncp")
 
@@ -260,6 +268,14 @@ class Contrato:
     def data_atualizacao(self) -> str | None:
         return self.raw.get("dataAtualizacao")
 
+    @property
+    def data_atualizacao_global(self) -> str | None:
+        """Data de atualização GLOBAL: muda também quando registros
+        vinculados mudam (itens, resultados, documentos), segundo o PNCP.
+        `data_atualizacao` é só a do próprio registro. Use a global para
+        decidir se vale reler os detalhes."""
+        return self.raw.get("dataAtualizacaoGlobal")
+
 
 @dataclass(frozen=True)
 class Ata:
@@ -307,6 +323,14 @@ class Ata:
         return self.raw.get("dataAtualizacao")
 
     @property
+    def data_atualizacao_global(self) -> str | None:
+        """Data de atualização GLOBAL: muda também quando registros
+        vinculados mudam (itens, resultados, documentos), segundo o PNCP.
+        `data_atualizacao` é só a do próprio registro. Use a global para
+        decidir se vale reler os detalhes."""
+        return self.raw.get("dataAtualizacaoGlobal")
+
+    @property
     def cancelado(self) -> bool:
         return bool(self.raw.get("cancelado"))
 
@@ -341,6 +365,12 @@ class PlanoPca:
     @property
     def data_atualizacao(self) -> str | None:
         return self.raw.get("dataAtualizacao")
+
+    @property
+    def data_atualizacao_global(self) -> str | None:
+        """Data de atualização global do PLANO (`dataAtualizacaoGlobalPCA`
+        no envelope). Neste envelope `dataAtualizacao` não vem."""
+        return self.raw.get("dataAtualizacaoGlobalPCA")
 
 
 @dataclass(frozen=True)

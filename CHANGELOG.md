@@ -2,6 +2,15 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
+## [Não publicado]
+
+### Added
+- `data_atualizacao_global` em `Contratacao`, `Contrato` e `Ata`
+  (`dataAtualizacaoGlobal`) e em `PlanoPca` (`dataAtualizacaoGlobalPCA`).
+  Segundo o PNCP, a global muda também quando itens, resultados ou
+  documentos mudam; `data_atualizacao` é só a do próprio registro.
+  A docstring de `itens_e_resultados` orienta a decidir pela global.
+
 ## [1.8.2] — 2026-10-28
 
 ### Fixed

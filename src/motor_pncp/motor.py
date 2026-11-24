@@ -455,7 +455,10 @@ class Motor:
         de novo. Sem isso, todo item com `temResultado` busca resultado
         sempre — caro numa contratação já conhecida onde só a
         `dataAtualizacao` cosmética mudou. Você decide com base no que já
-        tem gravado; o motor não sabe. **Cuidado ao implementar**: não
+        tem gravado; o motor não sabe. Para decidir QUAIS contratações
+        entram aqui, compare `Contratacao.data_atualizacao_global`, não
+        `data_atualizacao`: só a global muda quando itens ou resultados
+        mudam. **Cuidado ao implementar**: não
         basta comparar `item.data_atualizacao` com o que você já tem —
         uma coleta anterior pode ter sido interrompida DEPOIS de listar o
         item mas ANTES de buscar o resultado dele; nesse caso a
