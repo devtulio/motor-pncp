@@ -364,7 +364,9 @@ class PlanoPca:
 
     @property
     def data_atualizacao(self) -> str | None:
-        return self.raw.get("dataAtualizacao")
+        # o envelope do plano não traz `dataAtualizacao`: sem a queda para
+        # a global, esta property devolvia None sempre (até 1.8.2)
+        return self.raw.get("dataAtualizacao") or self.data_atualizacao_global
 
     @property
     def data_atualizacao_global(self) -> str | None:

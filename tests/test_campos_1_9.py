@@ -40,3 +40,11 @@ def test_pca_global_vem_de_outro_nome():
 def test_global_ausente_vira_none():
     for tipo in (Contratacao, Contrato, Ata, PlanoPca):
         assert tipo({}).data_atualizacao_global is None
+
+
+def test_pca_data_atualizacao_cai_para_a_global():
+    # até 1.8.2 devolvia None sempre: o envelope do plano não traz dataAtualizacao
+    planos = [PlanoPca(r) for r in carregar("pca")["data"]]
+    assert all(p.data_atualizacao == p.data_atualizacao_global for p in planos)
+    propria = PlanoPca({"dataAtualizacao": "x", "dataAtualizacaoGlobalPCA": "y"})
+    assert propria.data_atualizacao == "x"
